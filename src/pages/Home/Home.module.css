@@ -1,0 +1,159 @@
+.page {
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 48px;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.hero {
+  padding: 72px 0 48px;
+}
+
+.heading {
+  font-family: var(--font-ui), sans-serif;
+  font-weight: 700;
+  font-size: 44px;
+  color: var(--text);
+  line-height: 1.15;
+}
+
+.subheading {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: 16px;
+  max-width: 520px;
+}
+
+.buttonsRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.btnPrimary {
+  background: var(--theme);
+  color: var(--theme-contrast);
+  border: 1px solid var(--theme);
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms, opacity 150ms;
+}
+
+.btnPrimary:hover {
+  background: var(--theme-hover);
+  border-color: var(--theme-hover);
+}
+
+.btnSecondary {
+  background: var(--theme-alpha);
+  color: var(--theme);
+  border: 1px solid var(--theme);
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms;
+}
+
+.btnSecondary:hover {
+  background: var(--theme-alpha2);
+}
+
+.divider {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 48px;
+}
+
+.featuresLabel {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 150ms, background 150ms;
+}
+
+.card:hover {
+  border-color: var(--border2);
+  background: var(--bg4);
+}
+
+.icon {
+  width: 28px;
+  height: 28px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cardDesc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.tags {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.cardLink {
+  margin-top: auto;
+  color: var(--theme);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cardLink:hover {
+  text-decoration: underline;
+}

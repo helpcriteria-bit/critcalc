@@ -1,0 +1,153 @@
+.calculatorCard {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.displayArea {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.badgeRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.modeBadge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--theme);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.expressionLine {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+  min-height: 18px;
+  word-break: break-all;
+}
+
+.resultLine {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  color: var(--text);
+  text-align: right;
+  font-weight: 600;
+  min-height: 36px;
+  word-break: break-all;
+}
+
+.errorText {
+  color: var(--red);
+}
+
+.historyList {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.historyItem {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.historyItem:hover {
+  background: var(--bg4);
+  color: var(--text);
+}
+
+.historyRes {
+  color: var(--theme);
+}
+
+.buttonGrid {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+}
+
+.defaultBtn, .operatorBtn, .clearBtn, .funcBtn, .constBtn, .modeBtn {
+  height: 40px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.defaultBtn:hover, .operatorBtn:hover, .clearBtn:hover, .funcBtn:hover, .constBtn:hover, .modeBtn:hover {
+  background: var(--bg4);
+  border-color: var(--theme);
+}
+
+.operatorBtn {
+  color: var(--theme);
+  font-weight: 600;
+}
+
+.equalsBtn {
+  background: var(--theme);
+  color: var(--theme-contrast);
+  border-color: var(--theme);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.equalsBtn:hover {
+  background: var(--theme-hover);
+  border-color: var(--theme-hover);
+  color: var(--theme-contrast);
+}
+
+.clearBtn {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.funcBtn {
+  color: var(--purple);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.constBtn {
+  color: var(--green);
+  font-weight: 500;
+}
+
+.modeBtn {
+  color: var(--yellow);
+  font-weight: 600;
+  grid-column: span 2;
+}

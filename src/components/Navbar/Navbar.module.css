@@ -1,0 +1,355 @@
+.navbar {
+  height: 52px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 15px;
+  color: #ffffff;
+}
+
+.logoIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--theme);
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 100%;
+}
+
+.link, .activeLink {
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  transition: color 150ms ease;
+}
+
+.link {
+  color: var(--muted);
+}
+.link:hover {
+  color: var(--text);
+}
+
+.activeLink {
+  color: var(--theme);
+  border-bottom: 2px solid var(--theme);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.authSection {
+  position: relative;
+}
+
+.signInBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--accent, #6366f1);
+  color: #ffffff;
+  border: 1px solid var(--accent, #6366f1);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.signInBtn:hover {
+  background: #4f46e5;
+}
+
+.userChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.userChip:hover {
+  border-color: var(--accent, #6366f1);
+  background: var(--bg4);
+}
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--accent, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userDropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 240px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  padding: 8px;
+  z-index: 200;
+  animation: fadeIn 0.12s ease-out;
+}
+
+.userDropdownHeader {
+  padding: 8px 10px 10px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.userDropdownName {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userDropdownEmail {
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uidBadge {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  color: var(--accent, #6366f1);
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.userDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12.5px;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+  margin-top: 2px;
+}
+
+.userDropdownItem:hover {
+  background: var(--bg3);
+  color: var(--accent, #6366f1);
+}
+
+.signOutItem {
+  color: #f87171;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+
+.signOutItem:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+.keyIndicatorWrapper {
+  position: relative;
+}
+
+.keyButton {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.keyButton:hover {
+  background: var(--bg4);
+  border-color: var(--theme);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotGreen {
+  background: var(--green);
+}
+
+.dotGrey {
+  background: var(--muted);
+}
+
+.keyText {
+  font-weight: 500;
+}
+
+.dropdown {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 260px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  z-index: 200;
+}
+
+.label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  margin-bottom: 10px;
+}
+.input:focus {
+  border-color: var(--theme);
+}
+
+.dropdownActions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.saveBtn {
+  flex: 1;
+  background: var(--theme);
+  border: 1px solid var(--theme);
+  border-radius: 6px;
+  color: var(--theme-contrast);
+  padding: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+.saveBtn:hover {
+  background: var(--theme-hover);
+  border-color: var(--theme-hover);
+}
+
+.cancelBtn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cancelBtn:hover {
+  color: var(--theme);
+  border-color: var(--theme);
+}
+
+.linkHelp {
+  display: block;
+  font-size: 11px;
+  color: var(--theme);
+  text-decoration: none;
+}
+.linkHelp:hover {
+  text-decoration: underline;
+}

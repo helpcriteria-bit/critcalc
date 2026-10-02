@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Student Canvases Collection: users/{userId}/canvases/{canvasId}
+    match /users/{userId}/canvases/{canvasId} {
+      // Students can only read their own canvases
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Students can only create canvases inside their own user namespace
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+      // Students can only update their own canvases
+      allow update: if request.auth != null && request.auth.uid == userId;
+
+      // Students can only delete their own canvases
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Default deny for all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,387 @@
+.canvasContainer {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  user-select: none;
+}
+
+.canvasWrapperWithRulers {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 0;
+  bottom: 0;
+}
+
+.canvasWrapperFull {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* Photoshop-style Rulers */
+.rulerCorner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+  z-index: 40;
+  transition: background 0.15s ease, color 0.15s ease;
+  padding: 0;
+}
+
+.rulerCorner:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.topRuler {
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 0;
+  height: 24px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  z-index: 35;
+  pointer-events: none;
+  display: block;
+}
+
+.leftRuler {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  bottom: 0;
+  width: 24px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  z-index: 35;
+  pointer-events: none;
+  display: block;
+}
+
+/* Floating Student Quick Grid Bar */
+.quickGridBar {
+  position: absolute;
+  top: 32px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 45;
+  background: rgba(22, 27, 34, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.quickBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--font-sans);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.quickBtn:hover {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.quickBtnActive {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent);
+  border-color: rgba(56, 189, 248, 0.35);
+  font-weight: 600;
+}
+
+.barDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+/* Grid Settings Modal Popover */
+.gridModal {
+  position: absolute;
+  top: 72px;
+  right: 16px;
+  width: 290px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 55;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  font-size: 12px;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modalTitle {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.closeBtn:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.settingLabel {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.styleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.styleOption {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.styleOption:hover {
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+.styleOptionActive {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.selectInput {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.toggleSwitch {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggleInput {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.floatingTooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  z-index: 50;
+}
+
+.statusBar {
+  position: absolute;
+  bottom: 12px;
+  left: 36px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.divider {
+  color: var(--border2);
+}
+
+/* Floating Multi-Selection Action Bar */
+.selectionActionBar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(18, 22, 34, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), 0 0 16px rgba(56, 189, 248, 0.25);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  z-index: 60;
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.selectionInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selectionBadge {
+  background: #38bdf8;
+  color: #0b1329;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.selectionDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  padding: 5px 13px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  transition: all 0.15s ease;
+}
+
+.selectionDeleteBtn:hover {
+  background: #dc2626;
+  transform: scale(1.03);
+}
+
+.selectionClearBtn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  font-size: 14px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.selectionClearBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
