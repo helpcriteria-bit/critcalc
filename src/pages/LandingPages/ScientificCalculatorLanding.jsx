@@ -2,17 +2,18 @@ import React from 'react';
 import Calculator from '../../components/Calculator/Calculator';
 import CalculatorGuideSection from '../../components/Calculator/CalculatorGuideSection';
 import SEO from '../../components/SEO/SEO';
-import styles from './CalculatorPage.module.css';
+import styles from '../Calculator/CalculatorPage.module.css';
 
-export default function CalculatorPage() {
+export default function ScientificCalculatorLanding() {
   return (
     <div className={styles.page}>
-      <SEO route="/calculator" />
+      <SEO route="/scientific-calculator" />
+
       <div className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.h1Title}>Free Scientific Calculator</h1>
           <p className={styles.intro}>
-            Perform trigonometric, algebraic, and exponential calculations with live expression evaluation, DEG/RAD mode, memory storage, and full keyboard navigation.
+            An online scientific calculator engineered for Class 10 and high school students. Calculate trigonometric functions, powers, roots, logarithms, factorials, and memory registers with live syntax evaluation.
           </p>
         </header>
 

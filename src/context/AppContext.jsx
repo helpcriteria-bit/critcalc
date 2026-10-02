@@ -6,9 +6,9 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   const isPlaceholder = (k) => !k || k === 'your_key_here' || k === 'apikeyhere';
   const readKey = () => {
-    const stored = (localStorage.getItem('mathcanvas_groq_key') || '').trim();
+    const stored = (typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('mathcanvas_groq_key') : '') || '';
     const env = (import.meta.env.VITE_GROQ_API_KEY || '').trim();
-    if (!isPlaceholder(stored)) return stored;
+    if (!isPlaceholder(stored.trim())) return stored.trim();
     if (!isPlaceholder(env)) return env;
     return '';
   };
@@ -136,7 +136,7 @@ export function AppProvider({ children }) {
 
   // Student Grid & Measurement Settings
   const [gridSettings, setGridSettings] = useState(() => {
-    const saved = localStorage.getItem('critcalc_grid_settings');
+    const saved = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('critcalc_grid_settings') : null;
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -160,7 +160,9 @@ export function AppProvider({ children }) {
     setGridSettings((prev) => {
       const updated = typeof newSettings === 'function' ? newSettings(prev) : { ...prev, ...newSettings };
       try {
-        localStorage.setItem('critcalc_grid_settings', JSON.stringify(updated));
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('critcalc_grid_settings', JSON.stringify(updated));
+        }
       } catch (e) {}
       return updated;
     });
@@ -168,27 +170,32 @@ export function AppProvider({ children }) {
 
   // AI Tutor Model Selection (Default to llama-3.3-70b-versatile for tool calling)
   const [aiModel, setAiModelState] = useState(() => {
-    return localStorage.getItem('critcalc_ai_model') || 'llama-3.3-70b-versatile';
+    const saved = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('critcalc_ai_model') : null;
+    return saved || 'llama-3.3-70b-versatile';
   });
 
   const setAiModel = (model) => {
     setAiModelState((prev) => {
       const next = typeof model === 'function' ? model(prev) : model;
-      if (next !== prev) localStorage.setItem('critcalc_ai_model', next);
+      if (next !== prev && typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('critcalc_ai_model', next);
+      }
       return next;
     });
   };
 
   // Toggle "Allow AI to draw" (Default true, persisted in localStorage)
   const [allowAiDraw, setAllowAiDrawState] = useState(() => {
-    const val = localStorage.getItem('critcalc_allow_ai_draw');
+    const val = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('critcalc_allow_ai_draw') : null;
     return val === null ? true : val === 'true';
   });
 
   const setAllowAiDraw = (val) => {
     setAllowAiDrawState((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
-      localStorage.setItem('critcalc_allow_ai_draw', String(next));
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('critcalc_allow_ai_draw', String(next));
+      }
       return next;
     });
   };
@@ -290,11 +297,16 @@ export function AppProvider({ children }) {
 
   const setGroqKey = (key) => {
     const k = (key || '').trim();
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (k) {
+        localStorage.setItem('mathcanvas_groq_key', k);
+      } else {
+        localStorage.removeItem('mathcanvas_groq_key');
+      }
+    }
     if (k) {
-      localStorage.setItem('mathcanvas_groq_key', k);
       setGroqKeyState(k);
     } else {
-      localStorage.removeItem('mathcanvas_groq_key');
       setGroqKeyState(readKey());
     }
   };

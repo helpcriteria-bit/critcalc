@@ -6,6 +6,8 @@ import { getStudentCanvasById } from '../../firebase/canvasStorage';
 import CanvasHeader from '../../components/CanvasHeader/CanvasHeader';
 import Toolbar from '../../components/Toolbar/Toolbar';
 import GeoCanvas from '../../components/GeoCanvas/GeoCanvas';
+import CanvasGuideSection from '../../components/GeoCanvas/CanvasGuideSection';
+import SEO from '../../components/SEO/SEO';
 import styles from './CanvasPage.module.css';
 
 export default function CanvasPage() {
@@ -14,6 +16,7 @@ export default function CanvasPage() {
   const { user } = useAuth();
   const { loadCanvasDocument, currentCanvasId } = useApp();
   const [loadingDoc, setLoadingDoc] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     if (!canvasId || !user) return;
@@ -42,11 +45,28 @@ export default function CanvasPage() {
 
   return (
     <div className={styles.pageContainer}>
-      <CanvasHeader />
-      <div className={styles.page}>
-        <Toolbar />
-        <GeoCanvas />
+      <SEO route="/canvas" />
+
+      <div className={styles.canvasViewport}>
+        <CanvasHeader />
+        <div className={styles.page}>
+          <Toolbar />
+          <GeoCanvas />
+          <button
+            type="button"
+            className={styles.guideTrigger}
+            onClick={() => setShowGuide((prev) => !prev)}
+            aria-expanded={showGuide}
+          >
+            <span>{showGuide ? 'Hide Guide ▲' : '📖 Geometry Tools Guide & FAQs ▼'}</span>
+          </button>
+        </div>
       </div>
+
+      <CanvasGuideSection
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+      />
     </div>
   );
 }

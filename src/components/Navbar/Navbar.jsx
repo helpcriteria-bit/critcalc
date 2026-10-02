@@ -77,6 +77,9 @@ export default function Navbar() {
         <NavLink to="/tutor" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
           Tutor
         </NavLink>
+        <NavLink to="/learn" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
+          Learn
+        </NavLink>
       </nav>
 
       <div className={styles.right}>

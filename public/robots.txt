@@ -1,0 +1,10 @@
+# CritCalc robots.txt
+User-agent: *
+Allow: /
+
+# Private student account and canvas management routes
+Disallow: /my-canvases
+Disallow: /*?id=*
+
+# Canonical sitemap location
+Sitemap: https://critcalc-6d0c7.web.app/sitemap.xml

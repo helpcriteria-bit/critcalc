@@ -166,12 +166,12 @@ export default function AiTutor() {
     <div className={styles.tutorContainer}>
       <header className={styles.tutorHeader}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>
+          <div className={styles.title}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2a8 8 0 0 0-8 8c0 3 2 5.5 5 7.5V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.5c3-2 5-4.5 5-7.5a8 8 0 0 0-8-8z" />
             </svg>
             AI Maths & Geometry Tutor
-          </h1>
+          </div>
           <div className={styles.subtitle}>
             {connection.status === 'online' && (
               <span className={`${styles.statusPill} ${styles.statusOnline}`}>● Connected to Groq</span>

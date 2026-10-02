@@ -8,6 +8,7 @@ import {
   duplicateStudentCanvas,
   renameStudentCanvas
 } from '../../firebase/canvasStorage';
+import SEO from '../../components/SEO/SEO';
 import styles from './CanvasDashboard.module.css';
 
 function formatRelativeTime(dateString) {
@@ -173,6 +174,7 @@ export default function CanvasDashboard() {
   if (!user) {
     return (
       <div className={styles.dashboard}>
+        <SEO route="/my-canvases" robots="noindex, nofollow" />
         <div className={styles.unauthCard}>
           <div className={styles.unauthIcon}>
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2">
@@ -198,6 +200,7 @@ export default function CanvasDashboard() {
 
   return (
     <div className={styles.dashboard}>
+      <SEO route="/my-canvases" robots="noindex, nofollow" />
       <header className={styles.header}>
         <div className={styles.titleArea}>
           <h1 className={styles.title}>My Canvases</h1>
