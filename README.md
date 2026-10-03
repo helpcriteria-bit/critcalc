@@ -19,10 +19,12 @@ npm install
 ```
 
 ### 2. Environment Setup
-Copy `.env.example` to `.env` and add your Groq API key (optional, for AI Tutor):
+Copy `.env.example` to `.env` and add the API keys you intend to use locally (optional, for AI Tutor):
 ```bash
 cp .env.example .env
 ```
+
+Do not commit `.env` or put unrestricted API keys in a public deployment. Browser-based API keys are visible to visitors; restrict them to the required APIs and production domain, or use a server-side proxy.
 
 ### 3. Start Development Server
 ```bash
@@ -33,6 +35,18 @@ npm run dev
 ```bash
 npm run build
 ```
+
+### 5. Publish to Firebase Hosting
+
+The Hosting target is the Firebase project `critcalc`, which serves `https://critcalc.web.app`. Firebase Hosting access is required. The app's Firebase client configuration remains independent, so existing authentication and saved canvases continue to use the project configured in `.env`.
+
+```bash
+firebase login
+npm run build
+firebase deploy --only hosting
+```
+
+The production build statically renders public pages for search engines. After a successful deploy, check the canonical URLs, `https://critcalc.web.app/robots.txt`, and `https://critcalc.web.app/sitemap.xml`.
 
 ## ⌨️ Canvas Keyboard Shortcuts
 

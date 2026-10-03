@@ -5,14 +5,34 @@ const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const isPlaceholder = (k) => !k || k === 'your_key_here' || k === 'apikeyhere';
-  const readKey = () => {
+
+  const readGeminiKey = () => {
+    const stored = (typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('mathcanvas_gemini_key') : '') || '';
+    const env = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+    const fbKey = (import.meta.env.VITE_FIREBASE_API_KEY || '').trim();
+    if (!isPlaceholder(stored.trim()) && (!fbKey || stored.trim() !== fbKey)) return stored.trim();
+    if (!isPlaceholder(env)) return env;
+    return '';
+  };
+
+  const readGroqKey = () => {
     const stored = (typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('mathcanvas_groq_key') : '') || '';
     const env = (import.meta.env.VITE_GROQ_API_KEY || '').trim();
     if (!isPlaceholder(stored.trim())) return stored.trim();
     if (!isPlaceholder(env)) return env;
     return '';
   };
-  const [groqKey, setGroqKeyState] = useState(readKey);
+
+  const readProvider = () => {
+    const stored = (typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('mathcanvas_ai_provider') : '') || '';
+    if (stored === 'gemini' || stored === 'groq') return stored;
+    if (readGroqKey() && !readGeminiKey()) return 'groq';
+    return 'gemini';
+  };
+
+  const [aiProvider, setAiProviderState] = useState(readProvider);
+  const [geminiKey, setGeminiKeyState] = useState(readGeminiKey);
+  const [groqKey, setGroqKeyState] = useState(readGroqKey);
 
   const [chatHistory, setChatHistory] = useState([]);
   const [geoObjects, setGeoObjects] = useState([]);
@@ -25,6 +45,7 @@ export function AppProvider({ children }) {
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'unsaved' | 'failed'
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const activeCanvasElementRef = useRef(null);
+  const isDocumentLoadingRef = useRef(false);
 
   const registerCanvasElement = useCallback((canvasEl) => {
     activeCanvasElementRef.current = canvasEl;
@@ -32,6 +53,7 @@ export function AppProvider({ children }) {
 
   const loadCanvasDocument = useCallback((canvasDoc) => {
     if (!canvasDoc) return;
+    isDocumentLoadingRef.current = true;
     setCurrentCanvasId(canvasDoc.id || null);
     setCanvasName(canvasDoc.name || 'Untitled Geometry Canvas');
     const data = canvasDoc.canvasData || {};
@@ -51,6 +73,7 @@ export function AppProvider({ children }) {
   }, []);
 
   const resetCanvasToNew = useCallback(() => {
+    isDocumentLoadingRef.current = true;
     setCurrentCanvasId(null);
     setCanvasName('Untitled Geometry Canvas');
     setGeoObjects([]);
@@ -221,15 +244,20 @@ export function AppProvider({ children }) {
     setPendingConfirmation(null);
   }, []);
 
-  // Apply batch of AI actions with a SINGLE undo snapshot and staggered appearance
-  const applyAiBatch = useCallback(
-    async (actions = []) => {
-      if (!actions || actions.length === 0) return { results: [] };
+  // Live animated drawing runner registered by useCanvas
+  const liveDrawRunnerRef = useRef(null);
+  const registerLiveDrawRunner = useCallback((runner) => {
+    liveDrawRunnerRef.current = runner;
+  }, []);
 
-      // Snapshot before AI batch runs, so one Undo removes everything drawn
+  // Compute AI batch execution dry (without modifying React canvas state yet)
+  const previewAiBatch = useCallback(
+    (actions = []) => {
+      if (!actions || actions.length === 0) {
+        return { results: [], errors: [], finalObjects: geoObjectsRef.current, newlyAdded: [] };
+      }
+
       const initialObjects = [...geoObjectsRef.current];
-      pushHistory(initialObjects);
-
       let currentObjects = [...initialObjects];
       const results = [];
       const errors = [];
@@ -243,6 +271,10 @@ export function AppProvider({ children }) {
             setGridSettings: updateGridSettings,
             selectObject,
             setTransform,
+            getCanvasViewport: () => {
+              const rect = activeCanvasElementRef.current?.getBoundingClientRect();
+              return rect ? { width: rect.width, height: rect.height } : null;
+            },
             undo,
             requestConfirmation: (conf) => setPendingConfirmation(conf)
           }
@@ -261,39 +293,77 @@ export function AppProvider({ children }) {
         }
       }
 
+      const newlyAdded = currentObjects.filter(
+        (o) => !initialObjects.some((io) => io.id === o.id)
+      );
+
+      return { results, errors, initialObjects, finalObjects: currentObjects, newlyAdded };
+    },
+    [updateGridSettings, selectObject, undo]
+  );
+
+  // Apply batch of AI actions with a SINGLE undo snapshot and live animated motion
+  const applyAiBatch = useCallback(
+    async (actions = [], options = {}) => {
+      if (!actions || actions.length === 0) return { results: [] };
+
+      // Snapshot before AI batch runs, so one Undo removes everything drawn
+      const initialObjects = [...geoObjectsRef.current];
+      pushHistory(initialObjects);
+
+      const { results, errors, finalObjects, newlyAdded } = previewAiBatch(actions);
+
       // Check student preference for reduced motion
       const prefersReducedMotion =
         typeof window !== 'undefined' &&
         window.matchMedia &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      const newlyAdded = currentObjects.filter(
-        (o) => !initialObjects.some((io) => io.id === o.id)
-      );
+      const shouldAnimate =
+        !options.skipAnimation &&
+        !prefersReducedMotion &&
+        liveDrawRunnerRef.current &&
+        newlyAdded.length > 0;
 
-      if (prefersReducedMotion || newlyAdded.length <= 1) {
-        setGeoObjects(currentObjects);
+      if (shouldAnimate) {
+        // Run live progressive drawing with hand-drawn motion and glowing pen tracer!
+        await liveDrawRunnerRef.current(newlyAdded, initialObjects, finalObjects);
       } else {
-        // Stagger appearance ~150ms apart
-        let displayed = [...initialObjects];
-        for (let i = 0; i < newlyAdded.length; i++) {
-          displayed = [...displayed, newlyAdded[i]];
-          setGeoObjects(displayed);
-          if (i < newlyAdded.length - 1) {
-            await new Promise((r) => setTimeout(r, 150));
-          }
-        }
-        setGeoObjects(currentObjects);
+        setGeoObjects(finalObjects);
       }
 
-      return { results, errors, finalObjects: currentObjects };
+      return { results, errors, finalObjects };
     },
-    [pushHistory, undo, updateGridSettings, selectObject]
+    [pushHistory, previewAiBatch]
   );
 
   const undoAiDrawing = useCallback(() => {
     undo();
   }, [undo]);
+
+  const setAiProvider = (provider) => {
+    const p = provider === 'groq' ? 'groq' : 'gemini';
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('mathcanvas_ai_provider', p);
+    }
+    setAiProviderState(p);
+  };
+
+  const setGeminiKey = (key) => {
+    const k = (key || '').trim();
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (k) {
+        localStorage.setItem('mathcanvas_gemini_key', k);
+      } else {
+        localStorage.removeItem('mathcanvas_gemini_key');
+      }
+    }
+    if (k) {
+      setGeminiKeyState(k);
+    } else {
+      setGeminiKeyState(readGeminiKey());
+    }
+  };
 
   const setGroqKey = (key) => {
     const k = (key || '').trim();
@@ -307,15 +377,37 @@ export function AppProvider({ children }) {
     if (k) {
       setGroqKeyState(k);
     } else {
-      setGroqKeyState(readKey());
+      setGroqKeyState(readGroqKey());
+    }
+  };
+
+  const setApiKey = (key, provider) => {
+    const k = (key || '').trim();
+    if (k.startsWith('AIzaSy') || k.startsWith('AIza') || k.startsWith('AQ.')) {
+      setGeminiKey(k);
+      setAiProvider('gemini');
+    } else if (k.startsWith('gsk_')) {
+      setGroqKey(k);
+      setAiProvider('groq');
+    } else if (provider === 'groq') {
+      setGroqKey(k);
+      setAiProvider('groq');
+    } else {
+      setGeminiKey(k);
+      setAiProvider('gemini');
     }
   };
 
   return (
     <AppContext.Provider
       value={{
+        aiProvider,
+        setAiProvider,
+        geminiKey,
+        setGeminiKey,
         groqKey,
         setGroqKey,
+        setApiKey,
         aiModel,
         setAiModel,
         gridSettings,
@@ -352,13 +444,16 @@ export function AppProvider({ children }) {
         lastSavedAt,
         setLastSavedAt,
         activeCanvasElementRef,
+        isDocumentLoadingRef,
         registerCanvasElement,
         loadCanvasDocument,
         resetCanvasToNew,
         // AI Drawing controls
         allowAiDraw,
         setAllowAiDraw,
+        previewAiBatch,
         applyAiBatch,
+        registerLiveDrawRunner,
         undoAiDrawing,
         pendingConfirmation,
         confirmPendingAction,

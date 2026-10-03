@@ -120,6 +120,11 @@
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
 }
 
+.offlineDot {
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
 .spinner {
   width: 10px;
   height: 10px;
@@ -187,3 +192,28 @@
   background: var(--bg3, #21262d);
   color: var(--text, #f0f6fc);
 }
+
+@media (max-width: 640px) {
+  .canvasHeader {
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .nameInput {
+    max-width: 140px;
+    min-width: 80px;
+    font-size: 12px;
+  }
+  .kbdHint {
+    display: none;
+  }
+  .myCanvasesBtn span {
+    display: none;
+  }
+  .myCanvasesBtn {
+    padding: 5px 8px;
+  }
+  .statusIndicator span {
+    font-size: 10px;
+  }
+}
+

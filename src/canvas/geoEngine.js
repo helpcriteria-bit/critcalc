@@ -102,13 +102,14 @@ export function drawCircle(ctx, obj, toScreen, isHovered = false, isSelected = f
   ctx.restore();
 }
 
-export function drawTriangle(ctx, obj, toScreen, isHovered = false, isSelected = false) {
-  const { pts, fillColor = 'rgba(255, 123, 53, 0.12)', strokeColor = DEFAULT_COLORS.triangle } = obj;
+export function drawTriangle(ctx, obj, toScreen, isHovered = false, isSelected = false, unitScale = 40, unitName = 'cm') {
+  const { pts, fillColor = 'rgba(255, 123, 53, 0.12)', strokeColor = DEFAULT_COLORS.triangle, labels = ['A', 'B', 'C'] } = obj;
   if (!pts || pts.length < 3) return;
 
   const p1 = toScreen(pts[0].x, pts[0].y);
   const p2 = toScreen(pts[1].x, pts[1].y);
   const p3 = toScreen(pts[2].x, pts[2].y);
+  const screenPts = [p1, p2, p3];
 
   ctx.save();
   ctx.beginPath();
@@ -125,6 +126,61 @@ export function drawTriangle(ctx, obj, toScreen, isHovered = false, isSelected =
   ctx.lineWidth = isHovered ? 2.5 : 2;
   ctx.strokeStyle = isHovered ? '#ff9655' : strokeColor;
   ctx.stroke();
+
+  // Draw side lengths along each edge
+  ctx.font = '500 10.5px "JetBrains Mono", monospace';
+  for (let i = 0; i < 3; i++) {
+    const j = (i + 1) % 3;
+    const sp1 = screenPts[i];
+    const sp2 = screenPts[j];
+    const wp1 = pts[i];
+    const wp2 = pts[j];
+
+    const dxWorld = wp2.x - wp1.x;
+    const dyWorld = wp2.y - wp1.y;
+    const edgeLenWorld = Math.sqrt(dxWorld * dxWorld + dyWorld * dyWorld);
+    const edgeVal = (edgeLenWorld / (unitScale || 40)).toFixed(1);
+
+    const midX = (sp1.x + sp2.x) / 2;
+    const midY = (sp1.y + sp2.y) / 2;
+
+    const dx = sp2.x - sp1.x;
+    const dy = sp2.y - sp1.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+
+    const lx = midX + nx * 12;
+    const ly = midY + ny * 12;
+
+    ctx.fillStyle = 'rgba(13, 15, 20, 0.8)';
+    const textStr = `${edgeVal}${unitName}`;
+    const tw = ctx.measureText(textStr).width;
+    ctx.fillRect(lx - tw / 2 - 3, ly - 7, tw + 6, 14);
+
+    ctx.fillStyle = '#ffedd5';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(textStr, lx, ly);
+  }
+
+  // Draw vertex dots and labels
+  screenPts.forEach((sp, idx) => {
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = isHovered ? '#ff7b35' : '#ffffff';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#0d0f14';
+    ctx.stroke();
+
+    const labelChar = labels[idx] || String.fromCharCode(65 + (idx % 26));
+    ctx.font = '600 11px Inter, sans-serif';
+    ctx.fillStyle = '#ffedd5';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(labelChar, sp.x, sp.y - 6);
+  });
 
   if (isSelected) {
     const xs = [p1.x, p2.x, p3.x];
@@ -985,4 +1041,316 @@ export function drawSnapIndicator(ctx, snapInfo, toScreen) {
     ctx.fillText(text, bx, by);
   }
   ctx.restore();
+}
+
+/**
+ * Renders an active, glowing stylus/pencil tracer nib at the drawing tip.
+ * Gives the realistic visual effect of a live human drawing in progress.
+ */
+export function drawStylusTracer(ctx, screenPos, color = '#38bdf8', pulse = 0) {
+  if (!screenPos || !Number.isFinite(screenPos.x) || !Number.isFinite(screenPos.y)) return;
+
+  const { x, y } = screenPos;
+  ctx.save();
+
+  // 1. Soft glowing outer aura
+  const auraRad = 9 + Math.sin(pulse * 4) * 2;
+  ctx.beginPath();
+  ctx.arc(x, y, auraRad, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.28)';
+  ctx.fill();
+
+  // 2. Active ink/lead contact point
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = color || '#38bdf8';
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+
+  // 3. Micro spark at the lead contact
+  ctx.beginPath();
+  ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  // 4. Stylus Pen / Nib Silhouette (angled at 45 degrees up and to the right)
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Pen nib cone
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(5, -11);
+  ctx.lineTo(10, -7);
+  ctx.closePath();
+  ctx.fillStyle = '#38bdf8';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Pen body shaft
+  ctx.beginPath();
+  ctx.moveTo(5, -11);
+  ctx.lineTo(19, -25);
+  ctx.lineTo(23, -21);
+  ctx.lineTo(10, -7);
+  ctx.closePath();
+  ctx.fillStyle = '#0f172a';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // Stylus grip ring
+  ctx.beginPath();
+  ctx.moveTo(7, -13);
+  ctx.lineTo(12, -9);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.restore();
+  ctx.restore();
+}
+
+/**
+ * Draws an object progressively according to normalized progress t in [0, 1].
+ * Returns the screen coordinates of the current moving tracer tip.
+ */
+export function drawAnimatedObject(ctx, obj, progress, toScreen, options = {}) {
+  const t = Math.max(0, Math.min(1, progress));
+  const scale = options.scale || 1;
+  const unitScale = options.unitScale || 40;
+  const unitName = options.unitName || 'cm';
+
+  ctx.save();
+
+  let tracerScreenPos = null;
+
+  switch (obj.type) {
+    case 'point': {
+      const p = toScreen(obj.x, obj.y);
+      tracerScreenPos = p;
+
+      // Expanding ripple
+      const rippleR = 4 + t * 18;
+      const rippleOpacity = Math.max(0, 1 - t * 0.9);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, rippleR, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(56, 189, 248, ${rippleOpacity})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Solidifying core
+      const coreR = Math.min(5, 1.5 + t * 3.5);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, coreR, 0, Math.PI * 2);
+      ctx.fillStyle = obj.color || DEFAULT_COLORS.point;
+      ctx.fill();
+      ctx.strokeStyle = '#0d0f14';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Label pop-in
+      if (obj.label && t > 0.4) {
+        const labelAlpha = Math.min(1, (t - 0.4) / 0.6);
+        ctx.save();
+        ctx.globalAlpha = labelAlpha;
+        ctx.font = '600 12px Inter, sans-serif';
+        ctx.fillStyle = '#ffedd5';
+        const offX = obj.labelOffset?.x || 8;
+        const offY = obj.labelOffset?.y || -8;
+        ctx.fillText(obj.label, p.x + offX, p.y + offY);
+        ctx.restore();
+      }
+      break;
+    }
+
+    case 'line': {
+      const p1 = toScreen(obj.x1, obj.y1);
+      const p2 = toScreen(obj.x2, obj.y2);
+      const curX = p1.x + (p2.x - p1.x) * t;
+      const curY = p1.y + (p2.y - p1.y) * t;
+      tracerScreenPos = { x: curX, y: curY };
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(curX, curY);
+      ctx.strokeStyle = obj.color || DEFAULT_COLORS.line;
+      ctx.lineWidth = obj.width || 2;
+      if (obj.dash && obj.dash.length) ctx.setLineDash(obj.dash);
+      ctx.stroke();
+
+      // Endpoint start dot
+      ctx.beginPath();
+      ctx.arc(p1.x, p1.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = obj.color || DEFAULT_COLORS.line;
+      ctx.fill();
+      break;
+    }
+
+    case 'circle': {
+      const center = toScreen(obj.cx, obj.cy);
+      const radiusPx = (obj.r || 3) * scale;
+      const startAngle = -Math.PI / 2; // Begin at 12 o'clock like a compass
+      const currentAngle = startAngle + t * Math.PI * 2;
+
+      const tipX = center.x + radiusPx * Math.cos(currentAngle);
+      const tipY = center.y + radiusPx * Math.sin(currentAngle);
+      tracerScreenPos = { x: tipX, y: tipY };
+
+      // Center pivot point
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = obj.color || DEFAULT_COLORS.circle;
+      ctx.fill();
+
+      // Progressive arc stroke
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radiusPx, startAngle, currentAngle, false);
+      ctx.strokeStyle = obj.color || DEFAULT_COLORS.circle;
+      ctx.lineWidth = obj.width || 2;
+      if (obj.dash && obj.dash.length) ctx.setLineDash(obj.dash);
+      ctx.stroke();
+      break;
+    }
+
+    case 'triangle':
+    case 'polygon': {
+      const rawPts = obj.pts || [];
+      if (rawPts.length < 3) break;
+      const screenPts = rawPts.map((p) => toScreen(p.x, p.y));
+      const N = screenPts.length;
+
+      // Segment progress
+      const segIndex = Math.min(N - 1, Math.floor(t * N));
+      const segProgress = (t * N) - segIndex;
+
+      ctx.beginPath();
+      ctx.moveTo(screenPts[0].x, screenPts[0].y);
+
+      // Draw all segments fully completed so far
+      for (let i = 1; i <= segIndex; i++) {
+        const nextIdx = i % N;
+        ctx.lineTo(screenPts[nextIdx].x, screenPts[nextIdx].y);
+      }
+
+      // Draw current segment in progress
+      const pStart = screenPts[segIndex];
+      const pEnd = screenPts[(segIndex + 1) % N];
+      const curX = pStart.x + (pEnd.x - pStart.x) * segProgress;
+      const curY = pStart.y + (pEnd.y - pStart.y) * segProgress;
+      ctx.lineTo(curX, curY);
+
+      tracerScreenPos = { x: curX, y: curY };
+
+      ctx.strokeStyle = obj.strokeColor || (obj.type === 'triangle' ? DEFAULT_COLORS.triangle : DEFAULT_COLORS.polygon);
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // Draw visited vertex markers
+      for (let i = 0; i <= segIndex; i++) {
+        const sp = screenPts[i];
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#0d0f14';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const labelText = obj.labels?.[i] || String.fromCharCode(65 + (i % 26));
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.fillStyle = '#ffedd5';
+        ctx.fillText(labelText, sp.x, sp.y - 7);
+      }
+
+      // Smoothly fade in interior fill as stroke nears completion
+      if (t > 0.85 && obj.fillColor) {
+        const fillAlpha = (t - 0.85) / 0.15;
+        ctx.save();
+        ctx.globalAlpha = fillAlpha;
+        ctx.beginPath();
+        ctx.moveTo(screenPts[0].x, screenPts[0].y);
+        for (let i = 1; i < N; i++) ctx.lineTo(screenPts[i].x, screenPts[i].y);
+        ctx.closePath();
+        ctx.fillStyle = obj.fillColor;
+        ctx.fill();
+        ctx.restore();
+      }
+      break;
+    }
+
+    case 'rectangle': {
+      const p1 = toScreen(obj.x, obj.y);
+      const p2 = toScreen(obj.x + obj.w, obj.y + obj.h);
+      const rectCorners = [
+        { x: p1.x, y: p1.y },
+        { x: p2.x, y: p1.y },
+        { x: p2.x, y: p2.y },
+        { x: p1.x, y: p2.y }
+      ];
+      const N = 4;
+      const segIndex = Math.min(N - 1, Math.floor(t * N));
+      const segProgress = (t * N) - segIndex;
+
+      ctx.beginPath();
+      ctx.moveTo(rectCorners[0].x, rectCorners[0].y);
+      for (let i = 1; i <= segIndex; i++) {
+        ctx.lineTo(rectCorners[i % N].x, rectCorners[i % N].y);
+      }
+      const pStart = rectCorners[segIndex];
+      const pEnd = rectCorners[(segIndex + 1) % N];
+      const curX = pStart.x + (pEnd.x - pStart.x) * segProgress;
+      const curY = pStart.y + (pEnd.y - pStart.y) * segProgress;
+      ctx.lineTo(curX, curY);
+
+      tracerScreenPos = { x: curX, y: curY };
+
+      ctx.strokeStyle = obj.strokeColor || DEFAULT_COLORS.rectangle;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      break;
+    }
+
+    case 'ruler': {
+      const p1 = toScreen(obj.x1, obj.y1);
+      const p2 = toScreen(obj.x2, obj.y2);
+      const curX = p1.x + (p2.x - p1.x) * t;
+      const curY = p1.y + (p2.y - p1.y) * t;
+      tracerScreenPos = { x: curX, y: curY };
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(curX, curY);
+      ctx.strokeStyle = DEFAULT_COLORS.ruler;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+
+      if (t > 0.75) {
+        const midX = (p1.x + curX) / 2;
+        const midY = (p1.y + curY) / 2;
+        const dist = Math.hypot(obj.x2 - obj.x1, obj.y2 - obj.y1) / unitScale;
+        ctx.font = '600 11px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#10b981';
+        ctx.fillText(`${dist.toFixed(1)}${unitName}`, midX, midY - 8);
+      }
+      break;
+    }
+
+    default: {
+      // Fallback
+      if (obj.x !== undefined && obj.y !== undefined) {
+        tracerScreenPos = toScreen(obj.x, obj.y);
+      }
+      break;
+    }
+  }
+
+  ctx.restore();
+  return tracerScreenPos;
 }

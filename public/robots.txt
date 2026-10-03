@@ -7,4 +7,4 @@ Disallow: /my-canvases
 Disallow: /*?id=*
 
 # Canonical sitemap location
-Sitemap: https://critcalc-6d0c7.web.app/sitemap.xml
+Sitemap: https://critcalc.web.app/sitemap.xml

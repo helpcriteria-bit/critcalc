@@ -3,7 +3,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  setDoc,
   addDoc,
   deleteDoc,
   updateDoc,
@@ -12,7 +11,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, isFirebaseConfigured } from './config';
+import { db, storage, isFirebaseConfigured } from './config.js';
 
 /**
  * Checks if Firebase Firestore is available and ready.
@@ -20,6 +19,96 @@ import { db, storage, isFirebaseConfigured } from './config';
 function assertFirestore() {
   if (!isFirebaseConfigured || !db) {
     throw new Error('Firebase Firestore is not configured. Please add your Firebase credentials to .env.');
+  }
+}
+
+const LOCAL_STORAGE_PREFIX = 'critcalc_canvas_draft_';
+const PENDING_SYNC_KEY = 'critcalc_pending_syncs';
+
+/**
+ * Save a local fallback draft to localStorage in case user is offline or Firestore is unreachable.
+ */
+export function saveLocalCanvasDraft(uid, canvasId, { name, canvasData }) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    const key = `${LOCAL_STORAGE_PREFIX}${uid || 'anon'}_${canvasId || 'new'}`;
+    const payload = {
+      canvasId: canvasId || null,
+      userId: uid || null,
+      name: (name && name.trim()) || 'Untitled Geometry Canvas',
+      canvasData: canvasData || {},
+      savedAt: new Date().toISOString()
+    };
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch (err) {
+    console.warn('Failed to save local canvas draft:', err);
+  }
+}
+
+/**
+ * Retrieve local fallback draft from localStorage.
+ */
+export function getLocalCanvasDraft(uid, canvasId) {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const key = `${LOCAL_STORAGE_PREFIX}${uid || 'anon'}_${canvasId || 'new'}`;
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.warn('Failed to read local canvas draft:', err);
+    return null;
+  }
+}
+
+/**
+ * Remove local fallback draft once successfully synced to Firestore.
+ */
+export function clearLocalCanvasDraft(uid, canvasId) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    const key = `${LOCAL_STORAGE_PREFIX}${uid || 'anon'}_${canvasId || 'new'}`;
+    window.localStorage.removeItem(key);
+  } catch (_) {}
+}
+
+/**
+ * Mark a canvas as needing synchronization when connection restores.
+ */
+export function markPendingCanvasSync(uid, canvasId) {
+  if (typeof window === 'undefined' || !window.localStorage || !uid) return;
+  try {
+    const current = JSON.parse(window.localStorage.getItem(PENDING_SYNC_KEY) || '[]');
+    const item = { uid, canvasId: canvasId || 'new', timestamp: Date.now() };
+    const exists = current.some((s) => s.uid === uid && s.canvasId === (canvasId || 'new'));
+    if (!exists) {
+      current.push(item);
+      window.localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(current));
+    }
+  } catch (_) {}
+}
+
+/**
+ * Clear a pending sync record.
+ */
+export function clearPendingCanvasSync(uid, canvasId) {
+  if (typeof window === 'undefined' || !window.localStorage || !uid) return;
+  try {
+    const current = JSON.parse(window.localStorage.getItem(PENDING_SYNC_KEY) || '[]');
+    const filtered = current.filter((s) => !(s.uid === uid && s.canvasId === (canvasId || 'new')));
+    window.localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(filtered));
+  } catch (_) {}
+}
+
+/**
+ * Get all pending syncs for a user.
+ */
+export function getPendingCanvasSyncs(uid) {
+  if (typeof window === 'undefined' || !window.localStorage || !uid) return [];
+  try {
+    const current = JSON.parse(window.localStorage.getItem(PENDING_SYNC_KEY) || '[]');
+    return current.filter((s) => s.uid === uid);
+  } catch (_) {
+    return [];
   }
 }
 
@@ -31,32 +120,44 @@ export async function saveStudentCanvas(uid, canvasId, { name, canvasData, thumb
   assertFirestore();
   if (!uid) throw new Error('Student UID is required to save canvas.');
 
-  const canvasName = (name && name.trim()) || 'Untitled Geometry Canvas';
+  const trimmedName = (name && name.trim()) || 'Untitled Geometry Canvas';
+  const canvasName = trimmedName.slice(0, 200);
+  const data = canvasData && typeof canvasData === 'object' ? canvasData : {};
+
+  // Always keep a local copy as backup
+  saveLocalCanvasDraft(uid, canvasId, { name: canvasName, canvasData: data });
+
   const canvasesCol = collection(db, 'users', uid, 'canvases');
 
   if (canvasId) {
     // Update existing canvas
     const canvasRef = doc(db, 'users', uid, 'canvases', canvasId);
     const payload = {
+      userId: uid,
       name: canvasName,
-      canvasData,
+      canvasData: data,
       updatedAt: serverTimestamp()
     };
-    if (thumbnail) {
+    if (thumbnail !== undefined && thumbnail !== null) {
       payload.thumbnail = thumbnail;
     }
     await updateDoc(canvasRef, payload);
+    clearPendingCanvasSync(uid, canvasId);
     return canvasId;
   } else {
     // Create new canvas document
     const payload = {
+      userId: uid,
       name: canvasName,
-      canvasData,
+      canvasData: data,
       thumbnail: thumbnail || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
     const newDoc = await addDoc(canvasesCol, payload);
+    clearPendingCanvasSync(uid, 'new');
+    clearLocalCanvasDraft(uid, 'new');
+    saveLocalCanvasDraft(uid, newDoc.id, { name: canvasName, canvasData: data });
     return newDoc.id;
   }
 }
@@ -110,7 +211,21 @@ export async function getStudentCanvasById(uid, canvasId) {
 
   const canvasRef = doc(db, 'users', uid, 'canvases', canvasId);
   const snap = await getDoc(canvasRef);
-  if (!snap.exists()) return null;
+  if (!snap.exists()) {
+    // Check if there is a local draft
+    const draft = getLocalCanvasDraft(uid, canvasId);
+    if (draft) {
+      return {
+        id: canvasId,
+        name: draft.name,
+        canvasData: draft.canvasData,
+        createdAt: draft.savedAt,
+        updatedAt: draft.savedAt,
+        isLocalDraft: true
+      };
+    }
+    return null;
+  }
 
   const data = snap.data();
   return {
@@ -129,6 +244,8 @@ export async function deleteStudentCanvas(uid, canvasId) {
   if (!uid || !canvasId) throw new Error('UID and canvas ID are required.');
   const canvasRef = doc(db, 'users', uid, 'canvases', canvasId);
   await deleteDoc(canvasRef);
+  clearLocalCanvasDraft(uid, canvasId);
+  clearPendingCanvasSync(uid, canvasId);
 }
 
 /**
@@ -151,15 +268,17 @@ export async function duplicateStudentCanvas(uid, canvasId) {
 export async function renameStudentCanvas(uid, canvasId, newName) {
   assertFirestore();
   if (!uid || !canvasId) throw new Error('UID and canvas ID are required.');
+  const trimmedName = (newName && newName.trim()) || 'Untitled Geometry Canvas';
   const canvasRef = doc(db, 'users', uid, 'canvases', canvasId);
   await updateDoc(canvasRef, {
-    name: (newName && newName.trim()) || 'Untitled Geometry Canvas',
+    name: trimmedName.slice(0, 200),
     updatedAt: serverTimestamp()
   });
 }
 
 /**
  * Upload a binary asset/image to Firebase Storage under users/{uid}/assets/{assetId}.
+ * Note: Only used if future canvas tools specifically support file/image uploads.
  */
 export async function uploadCanvasAsset(uid, file) {
   if (!isFirebaseConfigured || !storage) {

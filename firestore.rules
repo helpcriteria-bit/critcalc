@@ -2,22 +2,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Student Canvases Collection: users/{userId}/canvases/{canvasId}
-    match /users/{userId}/canvases/{canvasId} {
-      // Students can only read their own canvases
-      allow read: if request.auth != null && request.auth.uid == userId;
-
-      // Students can only create canvases inside their own user namespace
-      allow create: if request.auth != null && request.auth.uid == userId;
-
-      // Students can only update their own canvases
-      allow update: if request.auth != null && request.auth.uid == userId;
-
-      // Students can only delete their own canvases
-      allow delete: if request.auth != null && request.auth.uid == userId;
+    // Helper functions for authentication & ownership verification
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Default deny for all other collections
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidCanvasName(name) {
+      return name is string && name.size() > 0 && name.size() <= 200;
+    }
+
+    function isValidCanvasData(data) {
+      return data is map;
+    }
+
+    // User Profile Document: users/{userId}
+    // Authenticated users can only read and update their own user record
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Student Canvases Collection: users/{userId}/canvases/{canvasId}
+    match /users/{userId}/canvases/{canvasId} {
+      // Students can only read and list their own saved canvases
+      allow read: if isOwner(userId);
+
+      // Students can only create canvases inside their own namespace with valid data and matching userId
+      allow create: if isOwner(userId)
+                    && request.resource.data.userId == request.auth.uid
+                    && isValidCanvasName(request.resource.data.name)
+                    && isValidCanvasData(request.resource.data.canvasData);
+
+      // Students can only update their own canvases; ownership cannot be reassigned
+      allow update: if isOwner(userId)
+                    && request.resource.data.get('userId', userId) == userId
+                    && isValidCanvasName(request.resource.data.name)
+                    && isValidCanvasData(request.resource.data.canvasData);
+
+      // Students can only delete their own canvases
+      allow delete: if isOwner(userId);
+    }
+
+    // Default deny for all other collections and documents
     match /{document=**} {
       allow read, write: if false;
     }

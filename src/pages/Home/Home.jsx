@@ -13,6 +13,7 @@ export default function Home() {
       <div className={styles.container}>
         {/* Hero Section */}
         <section className={styles.hero}>
+          <p className={styles.eyebrow}>A friendlier way to work through maths</p>
           <h1 className={styles.h1Title}>
             Free Online Math Calculator, Geometry Tools & Math Tutor
             <span className={styles.tagline}>Draw. Calculate. Understand.</span>
@@ -50,7 +51,7 @@ export default function Home() {
 
         {/* Features Section */}
         <section aria-labelledby="features-heading">
-          <div id="features-heading" className={styles.featuresLabel}>CORE MATHEMATICAL TOOLS</div>
+          <h2 id="features-heading" className={styles.featuresLabel}>Choose a tool to get started</h2>
           <div className={styles.grid}>
             {/* Card 1 — Geometry Canvas */}
             <div className={styles.card}>
@@ -161,6 +162,36 @@ export default function Home() {
               </Link>
             </div>
           </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="steps-heading">
+          <h2 id="steps-heading" className={styles.sectionHeading}>How to use CritCalc</h2>
+          <p className={styles.sectionSub}>
+            Start with the question you are working on, choose the tool that fits, and use the explanation or drawing to check your understanding.
+          </p>
+          <ol className={styles.stepsGrid}>
+            <li className={styles.stepCard}>
+              <span className={styles.stepNumber} aria-hidden="true">01</span>
+              <h3 className={styles.topicTitle}>Choose your workspace</h3>
+              <p className={styles.topicDesc}>Calculate an expression, build a geometry diagram, or ask the tutor about a maths idea.</p>
+              <Link to="/calculator" className={styles.cardLink}>Browse the tools →</Link>
+            </li>
+            <li className={styles.stepCard}>
+              <span className={styles.stepNumber} aria-hidden="true">02</span>
+              <h3 className={styles.topicTitle}>Enter a problem or make a diagram</h3>
+              <p className={styles.topicDesc}>Type an expression, use the canvas toolbar to add shapes, or ask a clear question with the details you know.</p>
+              <Link to="/canvas" className={styles.cardLink}>Open the geometry canvas →</Link>
+            </li>
+            <li className={styles.stepCard}>
+              <span className={styles.stepNumber} aria-hidden="true">03</span>
+              <h3 className={styles.topicTitle}>Check the steps and keep learning</h3>
+              <p className={styles.topicDesc}>Review the result, explore a worked lesson, or ask the AI tutor to explain a step in a different way.</p>
+              <Link to="/learn" className={styles.cardLink}>Explore maths guides →</Link>
+            </li>
+          </ol>
+          <p className={styles.helpNote}>
+            You can use the calculator and canvas without an account. Sign in when you want to save and reopen geometry projects.
+          </p>
         </section>
 
         {/* Section 2: Educational Learning Guides */}
@@ -286,6 +317,9 @@ export default function Home() {
               </ul>
             </div>
           </div>
+          <p className={styles.contact}>
+            Questions or feedback? <a href="mailto:help.criteria@gmail.com">Email the CritCalc team</a>.
+          </p>
         </footer>
       </div>
     </div>

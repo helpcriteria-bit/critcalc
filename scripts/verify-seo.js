@@ -28,7 +28,7 @@ assert(fs.existsSync(robotsPath), 'robots.txt exists in dist');
 if (fs.existsSync(robotsPath)) {
   const robots = fs.readFileSync(robotsPath, 'utf-8');
   assert(robots.includes('Disallow: /my-canvases'), 'robots.txt disallows /my-canvases');
-  assert(robots.includes('Sitemap: https://critcalc-6d0c7.web.app/sitemap.xml'), 'robots.txt points to correct sitemap.xml');
+  assert(robots.includes('Sitemap: https://critcalc.web.app/sitemap.xml'), 'robots.txt points to correct sitemap.xml');
 }
 
 // 2. Check sitemap.xml
@@ -37,10 +37,10 @@ assert(fs.existsSync(sitemapPath), 'sitemap.xml exists in dist');
 if (fs.existsSync(sitemapPath)) {
   const sitemap = fs.readFileSync(sitemapPath, 'utf-8');
   assert(!sitemap.includes('my-canvases'), 'sitemap.xml does NOT contain private /my-canvases route');
-  assert(sitemap.includes('https://critcalc-6d0c7.web.app/scientific-calculator'), 'sitemap contains /scientific-calculator');
-  assert(sitemap.includes('https://critcalc-6d0c7.web.app/geometry-calculator'), 'sitemap contains /geometry-calculator');
-  assert(sitemap.includes('https://critcalc-6d0c7.web.app/math-tutor'), 'sitemap contains /math-tutor');
-  assert(sitemap.includes('https://critcalc-6d0c7.web.app/learn/algebra'), 'sitemap contains /learn/algebra');
+  assert(sitemap.includes('https://critcalc.web.app/scientific-calculator'), 'sitemap contains /scientific-calculator');
+  assert(sitemap.includes('https://critcalc.web.app/geometry-calculator'), 'sitemap contains /geometry-calculator');
+  assert(sitemap.includes('https://critcalc.web.app/math-tutor'), 'sitemap contains /math-tutor');
+  assert(sitemap.includes('https://critcalc.web.app/learn/algebra'), 'sitemap contains /learn/algebra');
 }
 
 // 3. Verify private routes are NOT prerendered into dist
@@ -81,7 +81,7 @@ for (const relPath of expectedPages) {
 
     // Canonical
     const canonMatch = html.match(/<link\s+rel="canonical"\s+href="(.*?)"/i);
-    assert(canonMatch && canonMatch[1].startsWith('https://critcalc-6d0c7.web.app'), `[${relPath}] Has valid canonical URL`);
+    assert(canonMatch && canonMatch[1].startsWith('https://critcalc.web.app'), `[${relPath}] Has valid canonical URL`);
 
     // H1
     const h1Matches = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)];

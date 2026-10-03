@@ -6,16 +6,37 @@ import styles from './Navbar.module.css';
 
 export default function Navbar() {
   const navigate = useNavigate();
-  const { groqKey, setGroqKey, resetCanvasToNew } = useApp();
+  const { aiProvider, setAiProvider, geminiKey, groqKey, setApiKey, resetCanvasToNew } = useApp();
   const { user, signOut, openAuthModal } = useAuth();
 
   const [showKeyDropdown, setShowKeyDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [tempKey, setTempKey] = useState(groqKey);
+  const [selectedProvider, setSelectedProvider] = useState(aiProvider || 'gemini');
+  const [tempKey, setTempKey] = useState('');
+
+  useEffect(() => {
+    setSelectedProvider(aiProvider || 'gemini');
+  }, [aiProvider]);
+
+  const handleProviderSelect = (p) => {
+    setSelectedProvider(p);
+    setAiProvider?.(p);
+    setTempKey(p === 'gemini' ? (geminiKey || '') : (groqKey || ''));
+  };
+
+  const handleTempKeyChange = (e) => {
+    const val = e.target.value;
+    setTempKey(val);
+    if (val.startsWith('AIzaSy') || val.startsWith('AIza') || val.startsWith('AQ.')) {
+      setSelectedProvider('gemini');
+    } else if (val.startsWith('gsk_')) {
+      setSelectedProvider('groq');
+    }
+  };
 
   const handleSaveKey = (e) => {
     e.preventDefault();
-    setGroqKey(tempKey.trim());
+    setApiKey(tempKey.trim(), selectedProvider);
     setShowKeyDropdown(false);
   };
 
@@ -83,30 +104,57 @@ export default function Navbar() {
       </nav>
 
       <div className={styles.right}>
-        {/* Groq Connection */}
+        {/* AI Provider & Connection */}
         <div className={styles.keyIndicatorWrapper}>
           <button
             type="button"
             className={styles.keyButton}
             onClick={() => {
-              setTempKey(groqKey);
+              setTempKey(selectedProvider === 'gemini' ? (geminiKey || '') : (groqKey || ''));
               setShowKeyDropdown(!showKeyDropdown);
             }}
-            title="Groq API Key Settings"
+            title="AI Model & API Key Settings"
           >
-            <span className={`${styles.dot} ${groqKey ? styles.dotGreen : styles.dotGrey}`} />
-            <span className={styles.keyText}>{groqKey ? 'Groq Connected' : 'Set Groq Key'}</span>
+            <span
+              className={`${styles.dot} ${
+                (selectedProvider === 'gemini' ? geminiKey : groqKey) ? styles.dotGreen : styles.dotGrey
+              }`}
+            />
+            <span className={styles.keyText}>
+              {selectedProvider === 'gemini'
+                ? (geminiKey ? 'Gemini Connected' : 'Set Gemini Key')
+                : (groqKey ? 'Groq Connected' : 'Set Groq Key')}
+            </span>
           </button>
 
           {showKeyDropdown && (
             <div className={styles.dropdown}>
+              <div className={styles.providerToggle}>
+                <button
+                  type="button"
+                  className={`${styles.providerBtn} ${selectedProvider === 'gemini' ? styles.providerBtnActive : ''}`}
+                  onClick={() => handleProviderSelect('gemini')}
+                >
+                  ✨ Gemini
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.providerBtn} ${selectedProvider === 'groq' ? styles.providerBtnActive : ''}`}
+                  onClick={() => handleProviderSelect('groq')}
+                >
+                  ⚡ Groq
+                </button>
+              </div>
+
               <form onSubmit={handleSaveKey}>
-                <label className={styles.label}>Groq API Key</label>
+                <label className={styles.label}>
+                  {selectedProvider === 'gemini' ? 'Google Gemini API Key' : 'Groq API Key'}
+                </label>
                 <input
                   type="password"
                   value={tempKey}
-                  onChange={(e) => setTempKey(e.target.value)}
-                  placeholder="gsk_..."
+                  onChange={handleTempKeyChange}
+                  placeholder={selectedProvider === 'gemini' ? 'AIzaSy... or AQ....' : 'gsk_...'}
                   className={styles.input}
                   autoFocus
                 />
@@ -121,14 +169,25 @@ export default function Navbar() {
                   </button>
                 </div>
               </form>
-              <a
-                href="https://console.groq.com"
-                target="_blank"
-                rel="noreferrer"
-                className={styles.linkHelp}
-              >
-                Get free key at console.groq.com →
-              </a>
+              {selectedProvider === 'gemini' ? (
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.linkHelp}
+                >
+                  Get free Gemini key at Google AI Studio →
+                </a>
+              ) : (
+                <a
+                  href="https://console.groq.com/keys"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.linkHelp}
+                >
+                  Get free key at console.groq.com →
+                </a>
+              )}
             </div>
           )}
         </div>

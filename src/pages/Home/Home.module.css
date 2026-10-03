@@ -11,7 +11,15 @@
 }
 
 .hero {
-  padding: 64px 0 40px;
+  padding: 56px 0 40px;
+}
+
+.eyebrow {
+  margin-bottom: 14px;
+  color: var(--theme);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .h1Title {
@@ -60,6 +68,7 @@
   display: inline-flex;
   align-items: center;
   transition: background-color 150ms, border-color 150ms, opacity 150ms;
+  min-height: 44px;
 }
 
 .btnPrimary:hover {
@@ -80,6 +89,7 @@
   display: inline-flex;
   align-items: center;
   transition: background-color 150ms, border-color 150ms;
+  min-height: 44px;
 }
 
 .btnSecondary:hover {
@@ -99,6 +109,7 @@
   display: inline-flex;
   align-items: center;
   transition: background 150ms, border-color 150ms;
+  min-height: 44px;
 }
 
 .btnTertiary:hover {
@@ -119,11 +130,13 @@
   letter-spacing: 0.08em;
   margin-bottom: 20px;
   text-transform: uppercase;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
   gap: 16px;
 }
 
@@ -210,6 +223,46 @@
   line-height: 1.65;
   margin-bottom: 24px;
   max-width: 680px;
+}
+
+.stepsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  list-style: none;
+}
+
+.stepCard {
+  min-width: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  min-height: 34px;
+  border-radius: 8px;
+  background: var(--theme-alpha);
+  color: var(--theme);
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.helpNote {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .topicsGrid {
@@ -354,11 +407,79 @@
   color: var(--theme);
 }
 
-@media (max-width: 768px) {
-  .grid, .topicsGrid, .footerGrid {
+.contact {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.contact a {
+  color: var(--theme);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btnPrimary:focus-visible,
+.btnSecondary:focus-visible,
+.btnTertiary:focus-visible,
+.cardLink:focus-visible,
+.topicCard:focus-visible,
+.footerLinks a:focus-visible,
+.contact a:focus-visible {
+  outline: 2px solid var(--theme);
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 0 20px;
+  }
+
+  .hero {
+    padding-top: 36px;
+  }
+
+  .buttonsRow {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .buttonsRow > * {
+    justify-content: center;
+  }
+
+  .h1Title {
+    font-size: clamp(28px, 8vw, 36px);
+  }
+
+  .tagline {
+    font-size: 18px;
+  }
+
+  .topicsGrid,
+  .footerGrid {
     grid-template-columns: 1fr;
   }
-  .h1Title {
-    font-size: 30px;
+
+  .section {
+    margin-top: 44px;
+  }
+
+  .sectionHeading {
+    font-size: 21px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .topicCard,
+  .btnPrimary,
+  .btnSecondary,
+  .btnTertiary,
+  .footerLinks a {
+    transition: none;
   }
 }

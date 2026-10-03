@@ -2,9 +2,15 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
-import { saveStudentCanvas } from '../../firebase/canvasStorage';
+import {
+  saveStudentCanvas,
+  saveLocalCanvasDraft,
+  markPendingCanvasSync,
+  clearPendingCanvasSync,
+  getPendingCanvasSyncs
+} from '../../firebase/canvasStorage';
 import { generateThumbnail } from '../../utils/thumbnailHelper';
-import { isMac, MODIFIER_LABEL } from '../../canvas/toolShortcuts';
+import { MODIFIER_LABEL } from '../../canvas/toolShortcuts';
 import styles from './CanvasHeader.module.css';
 
 export default function CanvasHeader() {
@@ -23,21 +29,24 @@ export default function CanvasHeader() {
     lastSavedAt,
     setLastSavedAt,
     activeCanvasElementRef,
+    isDocumentLoadingRef,
     resetCanvasToNew
   } = useApp();
 
   const isInitialMount = useRef(true);
-  const prevGeoLength = useRef(geoObjects.length);
 
-  // Mark unsaved when objects change after initial load
+  // Mark unsaved when objects or settings change, but ignore when loading or resetting a document
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      prevGeoLength.current = geoObjects.length;
+      return;
+    }
+    if (isDocumentLoadingRef?.current) {
+      isDocumentLoadingRef.current = false;
       return;
     }
     setSaveStatus('unsaved');
-  }, [geoObjects, gridSettings]);
+  }, [geoObjects, gridSettings, isDocumentLoadingRef, setSaveStatus]);
 
   const handleSave = useCallback(
     async (isAutosave = false) => {
@@ -48,9 +57,32 @@ export default function CanvasHeader() {
         return;
       }
 
+      // Check if browser is currently offline
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+      if (isOffline) {
+        saveLocalCanvasDraft(user.uid, currentCanvasId, {
+          name: canvasName,
+          canvasData: { geoObjects, gridSettings, transform }
+        });
+        markPendingCanvasSync(user.uid, currentCanvasId);
+        setSaveStatus('offline');
+        return;
+      }
+
       setSaveStatus('saving');
       try {
-        const thumbnail = generateThumbnail(activeCanvasElementRef.current);
+        // Save local backup immediately before remote write
+        saveLocalCanvasDraft(user.uid, currentCanvasId, {
+          name: canvasName,
+          canvasData: { geoObjects, gridSettings, transform }
+        });
+
+        // Only generate thumbnail on manual user save to save costs and avoid continuous base64 writes
+        let thumbnail = null;
+        if (!isAutosave) {
+          thumbnail = generateThumbnail(activeCanvasElementRef.current);
+        }
+
         const savedId = await saveStudentCanvas(user.uid, currentCanvasId, {
           name: canvasName,
           canvasData: {
@@ -62,16 +94,19 @@ export default function CanvasHeader() {
         });
 
         setCurrentCanvasId(savedId);
+        clearPendingCanvasSync(user.uid, savedId);
         setSaveStatus('saved');
         setLastSavedAt(new Date().toISOString());
 
-        // Update URL query param if this was a newly saved canvas
+        // Update URL query param if this was a newly created canvas
         if (!currentCanvasId && savedId) {
           navigate(`/canvas?id=${savedId}`, { replace: true });
         }
       } catch (err) {
         console.error('Failed to save canvas:', err);
-        setSaveStatus('failed');
+        markPendingCanvasSync(user.uid, currentCanvasId);
+        const isNetError = typeof navigator !== 'undefined' && (!navigator.onLine || /network|offline|unavailable/i.test(err?.message || ''));
+        setSaveStatus(isNetError ? 'offline' : 'failed');
       }
     },
     [
@@ -102,7 +137,7 @@ export default function CanvasHeader() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleSave]);
 
-  // Debounced Autosave (3.5 seconds after changes if user is logged in and canvas exists)
+  // Debounced Autosave (3.5 seconds after changes if user is logged in and canvas has been saved once)
   useEffect(() => {
     if (!user || !currentCanvasId || saveStatus !== 'unsaved') return;
 
@@ -113,9 +148,38 @@ export default function CanvasHeader() {
     return () => clearTimeout(timer);
   }, [user, currentCanvasId, saveStatus, geoObjects, canvasName, handleSave]);
 
+  // Network connectivity listener to sync offline changes automatically
+  useEffect(() => {
+    const handleOnline = () => {
+      if (user) {
+        const pending = getPendingCanvasSyncs(user.uid);
+        if (pending.length > 0 || saveStatus === 'offline' || saveStatus === 'failed') {
+          handleSave(true);
+        }
+      }
+    };
+
+    const handleOffline = () => {
+      if (saveStatus === 'saving' || saveStatus === 'unsaved') {
+        saveLocalCanvasDraft(user?.uid, currentCanvasId, {
+          name: canvasName,
+          canvasData: { geoObjects, gridSettings, transform }
+        });
+        setSaveStatus('offline');
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [user, currentCanvasId, canvasName, geoObjects, gridSettings, transform, saveStatus, handleSave, setSaveStatus]);
+
   const handleNew = () => {
     if (saveStatus === 'unsaved') {
-      if (!window.confirm('You have unsaved changes. Start a new canvas anyway?')) {
+      if (!window.confirm('You have unsaved changes on this canvas. Start a new canvas anyway?')) {
         return;
       }
     }
@@ -140,11 +204,29 @@ export default function CanvasHeader() {
         </div>
       );
     }
+    if (saveStatus === 'offline') {
+      return (
+        <div
+          className={styles.statusIndicator}
+          style={{ cursor: 'pointer' }}
+          onClick={() => handleSave(false)}
+          title="Offline: Saved locally on this device. Will sync to the cloud when internet returns."
+        >
+          <span className={`${styles.statusDot} ${styles.offlineDot}`} />
+          <span style={{ color: '#38bdf8' }}>Offline (Saved locally)</span>
+        </div>
+      );
+    }
     if (saveStatus === 'failed') {
       return (
-        <div className={styles.statusIndicator} title="Save failed. Check network or click Save to retry.">
+        <div
+          className={styles.statusIndicator}
+          style={{ cursor: 'pointer' }}
+          onClick={() => handleSave(false)}
+          title="Save failed. Check network or click here to retry."
+        >
           <span className={`${styles.statusDot} ${styles.failedDot}`} />
-          <span style={{ color: '#f87171' }}>Save failed</span>
+          <span style={{ color: '#f87171' }}>Save failed · Retry</span>
         </div>
       );
     }
@@ -180,6 +262,12 @@ export default function CanvasHeader() {
             onChange={(e) => {
               setCanvasName(e.target.value);
               setSaveStatus('unsaved');
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur();
+                if (currentCanvasId) handleSave(false);
+              }
             }}
             placeholder="Canvas Title..."
             title="Click to rename canvas"

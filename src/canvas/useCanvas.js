@@ -25,9 +25,51 @@ import {
   calculateCircleTangent,
   calculateRegularPolygonVertices,
   solveDependencies,
-  drawSnapIndicator
+  drawSnapIndicator,
+  drawStylusTracer,
+  drawAnimatedObject
 } from './geoEngine';
 import { CANVAS_SHORTCUTS } from './toolShortcuts';
+
+function drawSingleGeoObject(ctx, obj, toScreen, isHovered, isSelected, scale, gridStepWorld, unit) {
+  switch (obj.type) {
+    case 'point':
+      drawPoint(ctx, obj, toScreen, isHovered, isSelected);
+      break;
+    case 'line':
+      drawLine(ctx, obj, toScreen, isHovered, isSelected);
+      break;
+    case 'circle':
+      drawCircle(ctx, obj, toScreen, isHovered, isSelected, scale);
+      break;
+    case 'triangle':
+      drawTriangle(ctx, obj, toScreen, isHovered, isSelected, gridStepWorld, unit);
+      break;
+    case 'rectangle':
+      drawRectangle(ctx, obj, toScreen, isHovered, isSelected);
+      break;
+    case 'polygon':
+      drawPolygon(ctx, obj, toScreen, isHovered, isSelected, gridStepWorld, unit);
+      break;
+    case 'ruler':
+      drawRulerMeasure(ctx, obj, toScreen, isHovered, isSelected, gridStepWorld, unit);
+      break;
+    case 'angle':
+      drawAngle(ctx, obj, toScreen, isHovered, isSelected);
+      break;
+    case 'rightangle':
+      drawRightAngle(ctx, obj, toScreen, isHovered, isSelected);
+      break;
+    case 'label':
+      drawLabel(ctx, obj, toScreen, isHovered, isSelected);
+      break;
+    case 'protractor':
+      drawProtractor(ctx, obj, toScreen);
+      break;
+    default:
+      break;
+  }
+}
 
 export function useCanvas() {
   const canvasRef = useRef(null);
@@ -46,7 +88,8 @@ export function useCanvas() {
     pushHistory,
     undo: appUndo,
     redo: appRedo,
-    clearCanvas: appClearCanvas
+    clearCanvas: appClearCanvas,
+    registerLiveDrawRunner
   } = useApp();
 
   const transformRef = useRef(transform);
@@ -328,34 +371,16 @@ export function useCanvas() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedId, selectedIds, geoObjects, undo, redo, clearCanvas, pushHistory, setGeoObjects, setSelectedId, setSelectedIds, setActiveTool, showShortcutsModal]);
 
-  // Main Render Loop
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const { width, height } = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-
-    // Retina display scaling
-    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-    }
-
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, width, height);
-
-    // 1. Draw Background Grid & Coordinate Axes
+  // Shared Background Grid & Coordinate Axes Renderer
+  const renderGridAndAxes = useCallback((ctx, width, height) => {
     const {
       showGrid = true,
       gridStyle = 'subdivided',
       gridSize = 40,
-      showAxes = true,
-      unit = 'cm'
+      showAxes = true
     } = gridSettings || {};
 
-    const { scale } = transform;
+    const { scale } = transformRef.current;
     const gridStepWorld = gridSize || 40;
 
     const startWorld = toWorld(0, 0);
@@ -453,26 +478,22 @@ export function useCanvas() {
       }
     }
 
-    // Coordinate Axes (X = 0 and Y = 0) with numbering
     if (showAxes) {
       const origin = toScreen(0, 0);
       ctx.save();
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
       ctx.lineWidth = 1.6;
 
-      // X-Axis
       ctx.beginPath();
       ctx.moveTo(0, origin.y);
       ctx.lineTo(width, origin.y);
       ctx.stroke();
 
-      // Y-Axis
       ctx.beginPath();
       ctx.moveTo(origin.x, 0);
       ctx.lineTo(origin.x, height);
       ctx.stroke();
 
-      // Axis arrows
       ctx.fillStyle = 'rgba(56, 189, 248, 0.8)';
       ctx.beginPath();
       ctx.moveTo(width - 4, origin.y);
@@ -522,49 +543,166 @@ export function useCanvas() {
       ctx.fillText('0', origin.x - 6, origin.y + 6);
       ctx.restore();
     }
+  }, [gridSettings, toScreen, toWorld]);
+
+  // Live Animated Drawing Runner (simulates real human hand-drawn motion with glowing stylus tracer)
+  const liveDrawAnimationRef = useRef(null);
+
+  const runLiveDrawAnimation = useCallback(
+    (newlyAdded, initialObjects, finalObjects) => {
+      return new Promise((resolve) => {
+        const canvas = canvasRef.current;
+        if (!canvas || !newlyAdded || newlyAdded.length === 0) {
+          setGeoObjects(finalObjects);
+          resolve();
+          return;
+        }
+
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const { width, height } = canvas.getBoundingClientRect();
+        const { scale } = transformRef.current;
+        const unitScale = gridSettings?.gridSize || 40;
+        const unitName = gridSettings?.unit || 'cm';
+
+        let currentObjIndex = 0;
+        const completedSoFar = [...initialObjects];
+        let objectStartTime = performance.now();
+        let isCancelled = false;
+
+        liveDrawAnimationRef.current = {
+          isActive: true,
+          cancel: () => {
+            isCancelled = true;
+            liveDrawAnimationRef.current = null;
+            setGeoObjects(finalObjects);
+            resolve();
+          }
+        };
+
+        const getDuration = (obj) => {
+          if (!obj) return 280;
+          if (obj.type === 'point') return 200;
+          if (obj.type === 'circle') return 480;
+          if (obj.type === 'triangle' || obj.type === 'polygon') return 520;
+          if (obj.type === 'rectangle') return 400;
+          if (obj.type === 'ruler') return 340;
+          return 300;
+        };
+
+        // Smooth cubic easing for hand-drawn motion
+        const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+        let pulseTick = 0;
+
+        const frame = (now) => {
+          if (isCancelled) return;
+
+          pulseTick += 0.08;
+          const currentObj = newlyAdded[currentObjIndex];
+          const duration = getDuration(currentObj);
+          const elapsed = now - objectStartTime;
+          const rawProgress = Math.min(1, Math.max(0, elapsed / duration));
+          const easedProgress = easeInOutCubic(rawProgress);
+
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          ctx.clearRect(0, 0, width, height);
+
+          // 1. Grid & Axes
+          renderGridAndAxes(ctx, width, height);
+
+          // 2. Previously completed objects
+          completedSoFar.forEach((obj) => {
+            drawSingleGeoObject(ctx, obj, toScreen, false, false, scale, unitScale, unitName);
+          });
+
+          // 3. Currently animating object with progressive stroke
+          if (currentObj) {
+            const tracerTip = drawAnimatedObject(ctx, currentObj, easedProgress, toScreen, {
+              scale,
+              unitScale,
+              unitName
+            });
+
+            // 4. Stylus tracer with moving nib, ink contact, and luminous pulse
+            if (tracerTip) {
+              const tracerColor = currentObj.color || currentObj.strokeColor || '#38bdf8';
+              drawStylusTracer(ctx, tracerTip, tracerColor, pulseTick);
+            }
+          }
+
+          ctx.restore();
+
+          if (rawProgress < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            // Commit finished object and advance to next
+            completedSoFar.push(currentObj);
+            currentObjIndex++;
+
+            if (currentObjIndex < newlyAdded.length) {
+              objectStartTime = performance.now();
+              requestAnimationFrame(frame);
+            } else {
+              // Entire batch finished! Hand control back to React render loop
+              liveDrawAnimationRef.current = null;
+              setGeoObjects(finalObjects);
+              resolve();
+            }
+          }
+        };
+
+        requestAnimationFrame(frame);
+      });
+    },
+    [setGeoObjects, toScreen, renderGridAndAxes, gridSettings]
+  );
+
+  useEffect(() => {
+    if (registerLiveDrawRunner) {
+      registerLiveDrawRunner(runLiveDrawAnimation);
+    }
+    return () => {
+      if (liveDrawAnimationRef.current) {
+        liveDrawAnimationRef.current.cancel();
+      }
+    };
+  }, [registerLiveDrawRunner, runLiveDrawAnimation]);
+
+  // Main Render Loop
+  useEffect(() => {
+    // If live drawing animation is active, requestAnimationFrame frame loop controls the canvas
+    if (liveDrawAnimationRef.current?.isActive) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const { width, height } = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    // Retina display scaling
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+    }
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Draw Background Grid & Coordinate Axes
+    renderGridAndAxes(ctx, width, height);
 
     // 2. Draw GeoObjects
-    geoObjects.forEach(obj => {
-      const isHovered = obj.id === hoveredId;
-      const isSelected = (selectedIds && selectedIds.length > 0) ? selectedIds.includes(obj.id) : obj.id === selectedId;
+    const { scale } = transform;
+    const gridStepWorld = gridSettings?.gridSize || 40;
+    const unit = gridSettings?.unit || 'cm';
 
-      switch (obj.type) {
-        case 'point':
-          drawPoint(ctx, obj, toScreen, isHovered, isSelected);
-          break;
-        case 'line':
-          drawLine(ctx, obj, toScreen, isHovered, isSelected);
-          break;
-        case 'circle':
-          drawCircle(ctx, obj, toScreen, isHovered, isSelected, scale);
-          break;
-        case 'triangle':
-          drawTriangle(ctx, obj, toScreen, isHovered, isSelected);
-          break;
-        case 'rectangle':
-          drawRectangle(ctx, obj, toScreen, isHovered, isSelected);
-          break;
-        case 'polygon':
-          drawPolygon(ctx, obj, toScreen, isHovered, isSelected, gridStepWorld, unit);
-          break;
-        case 'ruler':
-          drawRulerMeasure(ctx, obj, toScreen, isHovered, isSelected, gridStepWorld, unit);
-          break;
-        case 'angle':
-          drawAngle(ctx, obj, toScreen, isHovered, isSelected);
-          break;
-        case 'rightangle':
-          drawRightAngle(ctx, obj, toScreen, isHovered, isSelected);
-          break;
-        case 'label':
-          drawLabel(ctx, obj, toScreen, isHovered, isSelected);
-          break;
-        case 'protractor':
-          drawProtractor(ctx, obj, toScreen);
-          break;
-        default:
-          break;
-      }
+    geoObjects.forEach((obj) => {
+      const isHovered = obj.id === hoveredId;
+      const isSelected = selectedIds && selectedIds.length > 0 ? selectedIds.includes(obj.id) : obj.id === selectedId;
+      drawSingleGeoObject(ctx, obj, toScreen, isHovered, isSelected, scale, gridStepWorld, unit);
     });
 
     // 3. Draw In-Progress Construction Draft Preview

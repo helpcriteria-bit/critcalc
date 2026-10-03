@@ -11,6 +11,10 @@ import {
   calculatePolygonPerimeter,
   getPolygonName
 } from './geoEngine';
+import {
+  calculateTriangleMetrics,
+  calculatePolygonMetrics
+} from '../utils/mathTutorEngine';
 
 export const CM_TO_PX = 40; // 1 cm = 40 world px
 
@@ -170,16 +174,16 @@ export function getCanvasState(objects = [], gridSettings = {}) {
       }
       case 'triangle': {
         const cmPts = (o.pts || []).map((p) => worldToCm(p.x, p.y));
-        const areaPx = calculatePolygonArea(o.pts || []);
-        const perimPx = calculatePolygonPerimeter(o.pts || []);
-        const areaCm2 = Math.round((areaPx / (CM_TO_PX * CM_TO_PX)) * 100) / 100;
-        const perimCm = Math.round((perimPx / CM_TO_PX) * 100) / 100;
+        const labels = o.labels || ['A', 'B', 'C'];
+        const metrics = cmPts.length >= 3 ? calculateTriangleMetrics(cmPts[0], cmPts[1], cmPts[2], labels) : null;
         return {
           id: o.id,
           type: 'triangle',
-          vertices: cmPts,
-          areaCm2,
-          perimeterCm: perimCm
+          vertices: metrics ? metrics.vertices : cmPts,
+          sideLengths: metrics?.sideLengths || [],
+          angles: metrics?.angles || [],
+          areaCm2: metrics?.areaCm2 || 0,
+          perimeterCm: metrics?.perimeterCm || 0
         };
       }
       case 'rectangle': {
@@ -415,10 +419,24 @@ export function applyAction(objects, action, context = {}) {
         const lenCm = Math.round(
           Math.hypot(toRes.cmPos.x - fromRes.cmPos.x, toRes.cmPos.y - fromRes.cmPos.y) * 100
         ) / 100;
+        const angleDeg = Math.round(
+          (Math.atan2(toRes.cmPos.y - fromRes.cmPos.y, toRes.cmPos.x - fromRes.cmPos.x) * 180 / Math.PI) * 10
+        ) / 10;
+        const midCm = {
+          x: Math.round(((fromRes.cmPos.x + toRes.cmPos.x) / 2) * 100) / 100,
+          y: Math.round(((fromRes.cmPos.y + toRes.cmPos.y) / 2) * 100) / 100
+        };
 
         return {
           objects: [...currentObjects, newLine],
-          result: { id: newLine.id, from: fromRes.cmPos, to: toRes.cmPos, lengthCm: lenCm }
+          result: {
+            id: newLine.id,
+            from: fromRes.cmPos,
+            to: toRes.cmPos,
+            lengthCm: lenCm,
+            angleDeg,
+            midpointCm: midCm
+          }
         };
       }
 
@@ -502,27 +520,29 @@ export function applyAction(objects, action, context = {}) {
         });
 
         const worldPts = resPts.map((r) => r.worldPos);
+        const resolvedLabels = resPts.map((r, idx) => labels[idx] || r.label || String.fromCharCode(65 + idx));
         const newTri = {
           id: generateId('tri'),
           type: 'triangle',
           pts: worldPts,
+          labels: resolvedLabels,
           fillColor: params.fillColor || 'rgba(255, 123, 53, 0.12)',
           strokeColor: params.strokeColor || DEFAULT_COLORS.triangle,
           source
         };
 
-        const areaPx = calculatePolygonArea(worldPts);
-        const perimPx = calculatePolygonPerimeter(worldPts);
-        const areaCm2 = Math.round((areaPx / (CM_TO_PX * CM_TO_PX)) * 100) / 100;
-        const perimCm = Math.round((perimPx / CM_TO_PX) * 100) / 100;
+        const metrics = calculateTriangleMetrics(resPts[0].cmPos, resPts[1].cmPos, resPts[2].cmPos, resolvedLabels);
 
         return {
           objects: [...currentObjects, newTri],
           result: {
             id: newTri.id,
-            vertices: resPts.map((r) => r.cmPos),
-            areaCm2,
-            perimeterCm: perimCm
+            vertices: metrics.vertices,
+            sideLengths: metrics.sideLengths,
+            angles: metrics.angles,
+            areaCm2: metrics.areaCm2,
+            perimeterCm: metrics.perimeterCm,
+            classification: metrics.classification
           }
         };
       }
@@ -559,10 +579,24 @@ export function applyAction(objects, action, context = {}) {
 
         const areaCm2 = Math.round(Math.abs(w * h) * 100) / 100;
         const perimCm = Math.round(2 * (Math.abs(w) + Math.abs(h)) * 100) / 100;
+        const diagCm = Math.round(Math.hypot(w, h) * 100) / 100;
 
         return {
           objects: [...objects, newRect],
-          result: { id: newRect.id, corner: { x, y }, widthCm: Math.abs(w), heightCm: Math.abs(h), areaCm2, perimeterCm: perimCm }
+          result: {
+            id: newRect.id,
+            corner: { x, y },
+            widthCm: Math.abs(w),
+            heightCm: Math.abs(h),
+            diagonalCm: diagCm,
+            sideLengths: [
+              { from: 'Top/Bottom', lengthCm: Math.abs(w) },
+              { from: 'Left/Right', lengthCm: Math.abs(h) }
+            ],
+            angles: [{ vertex: 'All 4 Corners', degrees: 90.0 }],
+            areaCm2,
+            perimeterCm: perimCm
+          }
         };
       }
 
@@ -598,15 +632,18 @@ export function applyAction(objects, action, context = {}) {
         }
 
         const worldPts = resolved.map((r) => r.worldPos);
+        const resolvedLabels = resolved.map((r, idx) => r.label || String.fromCharCode(65 + (idx % 26)));
         const newPoly = {
           id: generateId('poly'),
           type: 'polygon',
           pts: worldPts,
+          labels: resolvedLabels,
           fillColor: params.fillColor || 'rgba(56, 189, 248, 0.14)',
           strokeColor: params.strokeColor || DEFAULT_COLORS.polygon,
           source
         };
 
+        const metrics = calculatePolygonMetrics(resolved.map((r) => r.cmPos), resolvedLabels);
         const areaPx = calculatePolygonArea(worldPts);
         const perimPx = calculatePolygonPerimeter(worldPts);
         const areaCm2 = Math.round((areaPx / (CM_TO_PX * CM_TO_PX)) * 100) / 100;
@@ -618,8 +655,10 @@ export function applyAction(objects, action, context = {}) {
             id: newPoly.id,
             name: getPolygonName(worldPts.length),
             sides: worldPts.length,
-            areaCm2,
-            perimeterCm: perimCm
+            sideLengths: metrics?.sideLengths || [],
+            angles: metrics?.angles || [],
+            areaCm2: metrics?.areaCm2 || areaCm2,
+            perimeterCm: metrics?.perimeterCm || perimCm
           }
         };
       }
@@ -682,6 +721,8 @@ export function applyAction(objects, action, context = {}) {
         const perimPx = calculatePolygonPerimeter(worldPts);
         const areaCm2 = Math.round((areaPx / (CM_TO_PX * CM_TO_PX)) * 100) / 100;
         const perimCm = Math.round((perimPx / CM_TO_PX) * 100) / 100;
+        const sideLen = Math.round((2 * radiusCm * Math.sin(Math.PI / sides)) * 100) / 100;
+        const interiorAngle = Math.round((((sides - 2) * 180) / sides) * 10) / 10;
 
         return {
           objects: [...currentObjects, newPoly],
@@ -690,6 +731,8 @@ export function applyAction(objects, action, context = {}) {
             name: getPolygonName(sides),
             sides,
             radiusCm,
+            sideLengthCm: sideLen,
+            interiorAngleDeg: interiorAngle,
             areaCm2,
             perimeterCm: perimCm,
             vertices: cmVertices
@@ -1012,13 +1055,16 @@ export function applyAction(objects, action, context = {}) {
         }
 
         const viewType = params.type || 'fit';
+        const viewport = context.getCanvasViewport?.();
+        const viewportWidth = viewport?.width || (typeof window !== 'undefined' ? window.innerWidth : 800);
+        const viewportHeight = viewport?.height || (typeof window !== 'undefined' ? window.innerHeight : 600);
 
         if (viewType === 'reset') {
           context.setTransform((prev) => ({
             ...prev,
             scale: 1.2,
-            offsetX: window.innerWidth ? window.innerWidth / 3 : 400,
-            offsetY: window.innerHeight ? window.innerHeight / 2 : 300
+            offsetX: viewportWidth / 2,
+            offsetY: viewportHeight / 2
           }));
           return { objects, result: { view: 'reset' } };
         }
@@ -1083,8 +1129,8 @@ export function applyAction(objects, action, context = {}) {
             const cx = (minX + maxX) / 2;
             const cy = (minY + maxY) / 2;
 
-            const viewportW = window.innerWidth ? window.innerWidth * 0.5 : 600;
-            const viewportH = window.innerHeight ? window.innerHeight * 0.7 : 500;
+            const viewportW = viewportWidth;
+            const viewportH = viewportHeight;
 
             const scaleX = (viewportW * 0.75) / w;
             const scaleY = (viewportH * 0.75) / h;

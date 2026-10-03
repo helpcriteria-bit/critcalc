@@ -1,37 +1,79 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { useGroq, isValidKey } from '../../hooks/useGroq';
+import { useAI, isValidKey, detectProvider } from '../../hooks/useAI';
 import styles from './AiTutor.module.css';
 
-export default function AiTutor() {
-  const { groqKey, setGroqKey, aiModel, setAiModel, chatHistory, setChatHistory } = useApp();
-  const { sendMessage, isLoading, connection, models, recheck } = useGroq();
+export default function AiTutor({ onAsk, isMaximized, onToggleMaximize }) {
+  const {
+    aiProvider,
+    setAiProvider,
+    geminiKey,
+    groqKey,
+    setApiKey,
+    aiModel,
+    setAiModel,
+    chatHistory,
+    setChatHistory,
+    allowAiDraw,
+    setAllowAiDraw
+  } = useApp();
+
+  const { sendMessage, isLoading, connection, models, recheck, provider, setProvider } = useAI();
+  const [selectedProvider, setSelectedProvider] = useState(aiProvider || 'gemini');
   const [keyDraft, setKeyDraft] = useState('');
   const [showKeyPanel, setShowKeyPanel] = useState(false);
 
   const [input, setInput] = useState('');
   const [isWaitingFirstToken, setIsWaitingFirstToken] = useState(false);
+  const chatAreaRef = useRef(null);
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
 
+  const activeKey = selectedProvider === 'gemini' ? geminiKey : groqKey;
   const needsKey = connection.status === 'no-key' || connection.status === 'invalid-key';
 
+  useEffect(() => {
+    setSelectedProvider(aiProvider || 'gemini');
+  }, [aiProvider]);
+
+  const handleProviderChange = (newProv) => {
+    setSelectedProvider(newProv);
+    setProvider?.(newProv);
+    setAiProvider(newProv);
+    setKeyDraft(newProv === 'gemini' ? geminiKey : groqKey);
+  };
+
+  const handleKeyDraftChange = (e) => {
+    const val = e.target.value;
+    setKeyDraft(val);
+    const detected = detectProvider(val);
+    if (detected && detected !== selectedProvider) {
+      setSelectedProvider(detected);
+      setProvider?.(detected);
+      setAiProvider(detected);
+    }
+  };
+
   const saveKey = () => {
-    setGroqKey(keyDraft);
+    setApiKey(keyDraft.trim(), selectedProvider);
     setKeyDraft('');
     setShowKeyPanel(false);
   };
 
   const quickPrompts = [
-    'How do I calculate polygon area using Shoelace formula?',
-    'Explain Pythagorean Theorem with examples',
-    'How to use the ruler tool to measure distance & angle?',
-    'Trigonometric ratios table (sin, cos, tan)'
+    'Draw a 3-4-5 right triangle',
+    'Draw an incircle in it',
+    'Draw a circumcircle',
+    'Draw an altitude from C to AB',
+    'Shoelace formula polygon area',
+    'Pythagorean theorem proof'
   ];
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll chat internally to bottom without forcing outer window scrolling
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatAreaRef.current) {
+      chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
@@ -51,6 +93,8 @@ export default function AiTutor() {
   const executeSend = async (messageText) => {
     const text = (messageText || input).trim();
     if (!text || isLoading) return;
+
+    onAsk?.();
 
     const userMessage = { role: 'user', content: text };
     const newHistory = [...chatHistory, userMessage];
@@ -97,7 +141,7 @@ export default function AiTutor() {
         ...prev,
         {
           role: 'assistant',
-          content: 'Something went wrong while answering. Please try again.',
+          content: 'Something went wrong while answering. Please try again or use the offline geometry tools.',
           isError: true
         }
       ]);
@@ -123,12 +167,11 @@ export default function AiTutor() {
     const lines = content.split('\n');
 
     return lines.map((line, lIdx) => {
-      // Bold subheaders like ### or **
       let isHeader = false;
       let displayLine = line;
-      if (/^#{2,3} /.test(line)) {
+      if (/^#{2,4} /.test(line)) {
         isHeader = true;
-        displayLine = line.replace(/^#{2,3} /, '');
+        displayLine = line.replace(/^#{2,4} /, '');
       }
 
       const parts = displayLine.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
@@ -162,6 +205,8 @@ export default function AiTutor() {
     });
   };
 
+  const providerDisplayName = selectedProvider === 'gemini' ? 'Google Gemini' : 'Groq';
+
   return (
     <div className={styles.tutorContainer}>
       <header className={styles.tutorHeader}>
@@ -170,51 +215,79 @@ export default function AiTutor() {
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2a8 8 0 0 0-8 8c0 3 2 5.5 5 7.5V20a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.5c3-2 5-4.5 5-7.5a8 8 0 0 0-8-8z" />
             </svg>
-            AI Maths & Geometry Tutor
+            AI Maths &amp; Geometry Tutor
           </div>
           <div className={styles.subtitle}>
             {connection.status === 'online' && (
-              <span className={`${styles.statusPill} ${styles.statusOnline}`}>● Connected to Groq</span>
+              <span className={`${styles.statusPill} ${styles.statusOnline}`}>
+                ● Connected to {providerDisplayName}
+              </span>
             )}
             {connection.status === 'checking' && (
-              <span className={`${styles.statusPill} ${styles.statusChecking}`}>● Connecting…</span>
+              <span className={`${styles.statusPill} ${styles.statusChecking}`}>
+                ● Connecting to {providerDisplayName}…
+              </span>
             )}
             {connection.status === 'offline' && (
               <span className={`${styles.statusPill} ${styles.statusError}`} title={connection.message}>
-                ● Reconnecting… (using offline solver)
+                ● Reconnecting… (Local Geometry Solver Active)
               </span>
             )}
             {connection.status === 'invalid-key' && (
               <span className={`${styles.statusPill} ${styles.statusError}`} title={connection.message}>
-                ● API key rejected
+                ● {providerDisplayName} Key Rejected
               </span>
             )}
             {connection.status === 'no-key' && (
-              <span className={`${styles.statusPill} ${styles.statusOffline}`}>● No API key — offline solver</span>
+              <span className={`${styles.statusPill} ${styles.statusOffline}`}>
+                ● Local Canvas Commands Active · Live AI Offline
+              </span>
             )}
-            <span>· Class 10 Step-by-Step Geometry & Algebra</span>
+            <span>· Class 10 Step-by-Step Geometry &amp; Algebra</span>
           </div>
         </div>
 
         <div className={styles.headerRight}>
+          <button
+            type="button"
+            onClick={() => setAllowAiDraw((enabled) => !enabled)}
+            className={`${styles.clearBtn} ${allowAiDraw ? styles.canvasAccessOn : styles.canvasAccessOff}`}
+            aria-pressed={allowAiDraw}
+            title={allowAiDraw ? 'Allow tutor to draw and edit canvas' : 'Tutor canvas access is off'}
+          >
+            Canvas access {allowAiDraw ? 'on' : 'off'}
+          </button>
+
           <select
-            value={aiModel || 'llama-3.1-8b-instant'}
+            value={aiModel || models[0]?.id}
             onChange={(e) => setAiModel(e.target.value)}
             className={styles.modelSelect}
-            title="Select AI Model"
+            title={`Select ${providerDisplayName} Model`}
           >
-            {models.map(m => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+            {models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
             ))}
           </select>
 
+          {connection.status === 'offline' && (
+            <button
+              type="button"
+              onClick={recheck}
+              className={styles.clearBtn}
+              title="Retry connection now"
+            >
+              Retry
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => (connection.status === 'offline' ? recheck() : setShowKeyPanel((v) => !v))}
+            onClick={() => setShowKeyPanel((v) => !v)}
             className={styles.clearBtn}
-            title={connection.status === 'offline' ? 'Retry connection now' : 'Set or change the Groq API key'}
+            title="Select AI Provider & Set API Key"
           >
-            {connection.status === 'offline' ? 'Retry' : 'API key'}
+            AI Provider &amp; Key
           </button>
 
           {chatHistory.length > 0 && (
@@ -227,30 +300,75 @@ export default function AiTutor() {
               Clear
             </button>
           )}
+
+          {onToggleMaximize && (
+            <button
+              type="button"
+              onClick={onToggleMaximize}
+              className={styles.clearBtn}
+              title={isMaximized ? 'Show guide & lessons below' : 'Maximize tutor to full view'}
+            >
+              {isMaximized ? 'Show Guide' : 'Maximize'}
+            </button>
+          )}
         </div>
       </header>
 
       {(needsKey || showKeyPanel) && (
         <div className={styles.keyPanel}>
-          <div className={styles.keyText}>
-            {connection.status === 'invalid-key'
-              ? 'Groq rejected this key. Paste a valid key to reconnect.'
-              : 'Paste your free Groq API key (starts with gsk_) to switch on the live AI tutor.'}{' '}
-            <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Get a key</a>
+          <div className={styles.providerToggle}>
+            <button
+              type="button"
+              className={`${styles.providerBtn} ${selectedProvider === 'gemini' ? styles.providerBtnActive : ''}`}
+              onClick={() => handleProviderChange('gemini')}
+            >
+              ✨ Google Gemini API (Recommended)
+            </button>
+            <button
+              type="button"
+              className={`${styles.providerBtn} ${selectedProvider === 'groq' ? styles.providerBtnActive : ''}`}
+              onClick={() => handleProviderChange('groq')}
+            >
+              ⚡ Groq API
+            </button>
           </div>
+
+          <div className={styles.keyText}>
+            {selectedProvider === 'gemini' ? (
+              <>
+                Paste your free <strong>Google Gemini API Key</strong> (starts with <code>AIzaSy...</code> or <code>AQ....</code>) for high-speed, generous rate limits.{' '}
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
+                  Get free Gemini key at Google AI Studio →
+                </a>
+              </>
+            ) : (
+              <>
+                Paste your <strong>Groq API Key</strong> (starts with <code>gsk_...</code>).{' '}
+                <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">
+                  Get free key at console.groq.com →
+                </a>
+              </>
+            )}
+          </div>
+
           <div className={styles.keyRow}>
             <input
               type="password"
-              value={keyDraft}
-              onChange={(e) => setKeyDraft(e.target.value)}
+              value={keyDraft || (selectedProvider === 'gemini' ? geminiKey : groqKey)}
+              onChange={handleKeyDraftChange}
               onKeyDown={(e) => e.key === 'Enter' && isValidKey(keyDraft) && saveKey()}
-              placeholder="gsk_..."
+              placeholder={selectedProvider === 'gemini' ? 'AIzaSy... or AQ....' : 'gsk_...'}
               className={styles.keyInput}
               autoComplete="off"
               spellCheck={false}
             />
-            <button type="button" className={styles.keySave} onClick={saveKey} disabled={!isValidKey(keyDraft)}>
-              Save &amp; connect
+            <button
+              type="button"
+              className={styles.keySave}
+              onClick={saveKey}
+              disabled={!isValidKey(keyDraft || (selectedProvider === 'gemini' ? geminiKey : groqKey))}
+            >
+              Save &amp; Connect
             </button>
           </div>
         </div>
@@ -263,7 +381,10 @@ export default function AiTutor() {
             key={idx}
             type="button"
             className={styles.promptChip}
-            onClick={() => executeSend(q)}
+            onClick={() => {
+              onAsk?.();
+              executeSend(q);
+            }}
             disabled={isLoading}
           >
             {q}
@@ -271,15 +392,15 @@ export default function AiTutor() {
         ))}
       </div>
 
-      <div className={styles.chatArea}>
+      <div ref={chatAreaRef} className={styles.chatArea}>
         {chatHistory.length === 0 && (
           <div className={styles.emptyState}>
             <div>
               <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text)', marginBottom: '8px' }}>
-                👋 Welcome to the Maths & Geometry Tutor!
+                👋 Welcome to the Class 10 Maths &amp; Geometry Tutor!
               </p>
-              <p style={{ fontSize: '13px', color: 'var(--muted)', maxWidth: '500px', margin: '0 auto' }}>
-                Ask me anything about polygons, area formulas, ruler measurements, coordinate geometry, trigonometry, or proofs. Select an example prompt above or type your question below.
+              <p style={{ fontSize: '13px', color: 'var(--muted)', maxWidth: '540px', margin: '0 auto', lineHeight: '1.5' }}>
+                Ask me to construct any triangle, incircle, circumcircle, altitude, polygon, or ruler measurement! All geometric drawings are constructed live on your canvas with exact mathematical proofs.
               </p>
             </div>
           </div>
@@ -312,7 +433,7 @@ export default function AiTutor() {
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="Ask a maths question (e.g., How does the polygon Shoelace formula work?)..."
+          placeholder="Ask a geometry or maths question (e.g., 'Draw a 3-4-5 triangle', 'Draw an incircle in it')..."
           rows={1}
           className={styles.textarea}
         />

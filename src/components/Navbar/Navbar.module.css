@@ -353,3 +353,36 @@
 .linkHelp:hover {
   text-decoration: underline;
 }
+
+.providerToggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.providerBtn {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.providerBtn:hover {
+  border-color: var(--theme);
+  color: var(--text);
+}
+
+.providerBtnActive {
+  background: var(--theme);
+  color: var(--theme-contrast, #fff);
+  border-color: var(--theme);
+  font-weight: 600;
+}
+

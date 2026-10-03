@@ -2,7 +2,7 @@
  * seoConfig.js - Centralized SEO Metadata and Structured Data for CritCalc
  */
 
-export const SITE_URL = 'https://critcalc-6d0c7.web.app';
+export const SITE_URL = 'https://critcalc.web.app';
 export const SITE_NAME = 'CritCalc';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/favicon.svg`;
 
