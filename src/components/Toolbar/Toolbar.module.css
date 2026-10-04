@@ -13,6 +13,15 @@
   overflow-x: hidden;
 }
 
+.toolGroups,
+.toolGroup {
+  display: contents;
+}
+
+.mobileToggle {
+  display: none;
+}
+
 .toolbar::-webkit-scrollbar {
   width: 3px;
 }
@@ -144,59 +153,168 @@
     right: 0;
     bottom: 0;
     width: 100%;
-    height: calc(68px + env(safe-area-inset-bottom, 0px));
+    height: calc(58px + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
     flex: none;
-    flex-direction: row;
-    justify-content: flex-start;
-    padding: 5px 8px max(5px, env(safe-area-inset-bottom, 0px));
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0 12px env(safe-area-inset-bottom, 0px);
     border-right: 0;
     border-top: 1px solid var(--border);
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    overflow: hidden;
     background: color-mix(in srgb, var(--bg2) 94%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    transition: height 180ms ease;
   }
 
-  .toolbar::-webkit-scrollbar {
+  .toolbarExpanded {
+    height: min(58dvh, 500px);
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.42);
+  }
+
+  .mobileToggle {
+    display: flex;
+    position: relative;
+    width: 100%;
+    min-height: 57px;
+    flex: 0 0 57px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    padding: 13px 4px 5px;
+    text-align: left;
+    touch-action: manipulation;
+  }
+
+  .mobileToggleGrip {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 34px;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--border2);
+    transform: translateX(-50%);
+  }
+
+  .mobileToggleLabel {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    min-width: 0;
+    text-transform: capitalize;
+  }
+
+  .mobileToggleLabel strong {
+    font-size: 13px;
+  }
+
+  .mobileToggleLabel > span {
+    color: var(--muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobileToggleIcon {
+    flex: 0 0 auto;
+    color: var(--accent);
+  }
+
+  .toolGroups {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 0 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+
+  .toolbar:not(.toolbarExpanded) .toolGroups {
     display: none;
   }
 
-  .groupLabel {
+  .toolGroup {
+    display: grid;
     flex: 0 0 auto;
-    margin: 0 7px 0 3px;
-    font-size: 9px;
-    letter-spacing: 0.5px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .groupLabel {
+    grid-column: 1 / -1;
+    margin: 0 0 1px;
+    padding: 2px 2px 5px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: 0.7px;
   }
 
   .btnWrapper {
-    flex: 0 0 auto;
-    margin: 0 2px;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
   }
 
   .toolBtn {
-    width: 46px;
-    height: 46px;
-    border-radius: 10px;
+    width: 100%;
+    height: 62px;
+    flex-direction: column;
+    gap: 4px;
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--bg3) 75%, transparent);
+  }
+
+  .toolBtn::after {
+    content: attr(data-label);
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    color: inherit;
+    font-family: var(--font-sans);
+    font-size: 9px;
+    line-height: 1.1;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .toolBtn svg {
     width: 22px;
     height: 22px;
+    flex: 0 0 auto;
+  }
+
+  .toolBtn.active {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent);
   }
 
   .divider {
-    flex: 0 0 1px;
-    width: 1px;
-    height: 30px;
-    margin: 0 5px;
+    display: none;
   }
 
   .tooltip {
     display: none;
+  }
+
+  @media (max-width: 370px) {
+    .toolGroup {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 }

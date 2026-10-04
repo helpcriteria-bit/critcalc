@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { getShortcut } from '../../canvas/toolShortcuts';
 import styles from './Toolbar.module.css';
 
 export default function Toolbar({ onUndo, onRedo, onClear }) {
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const {
     activeTool,
     setActiveTool,
@@ -341,9 +342,35 @@ export default function Toolbar({ onUndo, onRedo, onClear }) {
   ];
 
   return (
-    <aside className={styles.toolbar}>
+    <aside className={`${styles.toolbar} ${mobileExpanded ? styles.toolbarExpanded : ''}`}>
+      <button
+        type="button"
+        className={styles.mobileToggle}
+        onClick={() => setMobileExpanded((expanded) => !expanded)}
+        aria-expanded={mobileExpanded}
+        aria-label={`${mobileExpanded ? 'Close' : 'Open'} tools; current tool is ${activeTool}`}
+      >
+        <span className={styles.mobileToggleGrip} />
+        <span className={styles.mobileToggleLabel}>
+          <strong>Tools</strong>
+          <span>{activeTool}</span>
+        </span>
+        <svg
+          className={styles.mobileToggleIcon}
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d={mobileExpanded ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6'} />
+        </svg>
+      </button>
+      <div className={styles.toolGroups}>
       {toolGroups.map((grp, gIdx) => (
-        <React.Fragment key={grp.group}>
+        <div key={grp.group} className={styles.toolGroup}>
           {gIdx > 0 && <div className={styles.divider} />}
           <span className={styles.groupLabel}>{grp.group}</span>
           {grp.tools.map((tool) => {
@@ -353,9 +380,14 @@ export default function Toolbar({ onUndo, onRedo, onClear }) {
                 <button
                   type="button"
                   className={`${styles.toolBtn} ${activeTool === tool.id ? styles.active : ''}`}
-                  onClick={tool.action || (() => setActiveTool(tool.id))}
+                  onClick={() => {
+                    if (tool.action) tool.action();
+                    else setActiveTool(tool.id);
+                    setMobileExpanded(false);
+                  }}
                   aria-label={`${tool.label}${shortcut ? ` (${shortcut})` : ''} — ${tool.description}`}
                   title={`${tool.label}${shortcut ? ` (${shortcut})` : ''} — ${tool.description}`}
+                  data-label={tool.label}
                 >
                   {tool.icon}
                 </button>
@@ -369,8 +401,9 @@ export default function Toolbar({ onUndo, onRedo, onClear }) {
               </div>
             );
           })}
-        </React.Fragment>
+        </div>
       ))}
+      </div>
     </aside>
   );
 }
