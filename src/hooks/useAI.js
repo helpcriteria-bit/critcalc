@@ -406,17 +406,17 @@ export function useAI() {
             { role: 'system', content: sysPrompt },
             ...history
               .filter((m) => !m.isError && !m.isOffline)
-              .slice(-4) // Trim to last 4 messages to save quota and cut prompt tokens by 60%
+              .slice(-20)
               .map((m) => ({ role: m.role, content: m.content })),
             { role: 'user', content: userText }
           ];
 
-          // Priority chain of models: quota-saver flash-lite models first
-          const chain = prov === 'gemini'
-            ? [aiModel || DEFAULT_GEMINI_MODEL, 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']
-            : ['llama-3.3-70b-versatile', aiModel || DEFAULT_GROQ_MODEL, 'llama-3.1-8b-instant'];
-
-          const uniqueChain = chain.filter((id, i, a) => id && a.indexOf(id) === i);
+          const providerModels = models.map((model) => model.id);
+          const defaultModel = prov === 'gemini' ? DEFAULT_GEMINI_MODEL : DEFAULT_GROQ_MODEL;
+          const selectedModel = providerModels.includes(aiModel) ? aiModel
+            : providerModels.includes(defaultModel) ? defaultModel
+            : providerModels[0] || defaultModel;
+          const uniqueChain = [selectedModel, ...providerModels.filter((id) => id !== selectedModel)].slice(0, 2);
           let delivered = 0;
           const counted = (t) => {
             delivered += 1;
@@ -424,34 +424,39 @@ export function useAI() {
           };
 
           outer: for (const model of uniqueChain) {
-            for (let attempt = 0; attempt < 2; attempt++) {
+            for (let attempt = 0; attempt < 1; attempt++) {
               try {
                 let conversation = [...messages];
                 let drewAnything = false;
-                let pendingVisualBatch = null;
+                let pendingVisualBatch = [];
                 let hasTriggeredLiveDraw = false;
 
                 const triggerVisualDraw = () => {
-                  if (pendingVisualBatch && pendingVisualBatch.length > 0 && !hasTriggeredLiveDraw) {
+                  if (pendingVisualBatch.length > 0 && !hasTriggeredLiveDraw) {
                     hasTriggeredLiveDraw = true;
                     const toDraw = pendingVisualBatch;
-                    pendingVisualBatch = null;
                     // Trigger live progressive drawing with hand-drawn motion effect
                     applyAiBatch(toDraw, { animate: true });
-                    drewAnything = true;
                   }
                 };
 
-                const synchronizedOnToken = (tokenChunk) => {
-                  // Live draw begins at the EXACT same time the first text token arrives
-                  triggerVisualDraw();
-                  counted(tokenChunk);
-                };
-
-                // Multi-step tool-calling agent loop (Max 6 iterations)
-                for (let iter = 0; iter < 6; iter++) {
+                // Limit tool round-trips so an unproductive model cannot hold the tutor indefinitely.
+                for (let iter = 0; iter < 4; iter++) {
                   // Selective tool passing: only include heavy tool schemas when drawing is needed!
                   const useTools = allowAiDrawRef.current && isCanvasCommand;
+                  if (!useTools) {
+                    const tokenCount = await streamOnce({
+                      provider: prov,
+                      key,
+                      model,
+                      messages: conversation,
+                      onToken: counted
+                    });
+                    if (!tokenCount) throw new AIError('server', `${prov} returned empty output.`);
+                    setConnection({ status: 'online', message: '', provider: prov });
+                    return { source: prov, model, drew: false };
+                  }
+
                   const chatResp = await callChatOnce({
                     provider: prov,
                     key,
@@ -467,24 +472,15 @@ export function useAI() {
                   const assistantMsg = choice.message || {};
                   const toolCalls = assistantMsg.tool_calls || [];
 
-                  // If no tools called, stream final explanation in synchronized harmony
+                  // Deliver the final explanation without making a duplicate completion request.
                   if (toolCalls.length === 0) {
                     const text = assistantMsg.content || '';
                     if (text) {
                       triggerVisualDraw();
-                      for (let i = 0; i < text.length; i += 4) {
-                        counted(text.slice(i, i + 4));
-                        await sleep(8);
-                      }
+                      counted(text);
                     } else {
-                      await streamOnce({
-                        provider: prov,
-                        key,
-                        model,
-                        messages: conversation,
-                        onToken: synchronizedOnToken
-                      });
                       triggerVisualDraw();
+                      if (drewAnything) counted('Done — I added the requested construction to the canvas.');
                     }
 
                     if (delivered > 0) {
@@ -527,12 +523,18 @@ export function useAI() {
                   if (actionsToBatch.length > 0) {
                     // Compute geometry results DRY so AI receives accurate mathematical results immediately
                     // WITHOUT popping shapes onto the canvas before the explanation starts
-                    const preview = previewAiBatch ? previewAiBatch(actionsToBatch) : { results: [] };
-                    drewAnything = true;
+                    const combinedActions = [...pendingVisualBatch, ...actionsToBatch];
+                    const preview = previewAiBatch ? previewAiBatch(combinedActions) : { results: [] };
+                    const priorCount = pendingVisualBatch.length;
+                    const currentResults = preview.results?.slice(priorCount) || [];
+                    const validActions = actionsToBatch.filter((_, index) => !currentResults[index]?.error);
+                    drewAnything = drewAnything || validActions.some(
+                      (action) => typeof action.type === 'string' && action.type.startsWith('add_')
+                    );
 
                     for (let i = 0; i < actionsToBatch.length; i++) {
                       const act = actionsToBatch[i];
-                      const resItem = preview.results?.[i] || { result: 'OK' };
+                      const resItem = currentResults[i] || { result: 'OK' };
                       toolResponses.push({
                         role: 'tool',
                         tool_call_id: act.tool_call_id,
@@ -542,7 +544,7 @@ export function useAI() {
                     }
 
                     // Hold the visual actions to be animated alongside the explanation text
-                    pendingVisualBatch = actionsToBatch;
+                    pendingVisualBatch = [...pendingVisualBatch, ...validActions];
                   }
 
                   conversation.push(...toolResponses);
@@ -550,6 +552,12 @@ export function useAI() {
 
                 if (delivered > 0) {
                   triggerVisualDraw();
+                  setConnection({ status: 'online', message: '', provider: prov });
+                  return { source: prov, model, drew: drewAnything };
+                }
+                if (pendingVisualBatch.length > 0) {
+                  triggerVisualDraw();
+                  counted('Done — I added the requested construction to the canvas.');
                   setConnection({ status: 'online', message: '', provider: prov });
                   return { source: prov, model, drew: drewAnything };
                 }
@@ -565,10 +573,8 @@ export function useAI() {
                   if (isCanvasCommand && allowAiDrawRef.current) {
                     break outer;
                   }
-                  if (attempt === 1) continue outer;
                 }
                 if (e.kind === 'model') continue outer;
-                await sleep(e.retryAfter ? Math.min(e.retryAfter, 5) * 1000 : 500 * 2 ** attempt);
               }
             }
           }
@@ -620,7 +626,7 @@ export function useAI() {
         setIsLoading(false);
       }
     },
-    [aiModel, applyAiBatch]
+    [aiModel, applyAiBatch, models, previewAiBatch]
   );
 
   return {

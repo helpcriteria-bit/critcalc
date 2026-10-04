@@ -34,8 +34,11 @@ export default function CanvasHeader() {
   } = useApp();
 
   const isInitialMount = useRef(true);
+  const saveInFlightRef = useRef(false);
+  const editVersionRef = useRef(0);
+  const [retrySave, setRetrySave] = React.useState(0);
 
-  // Mark unsaved when objects or settings change, but ignore when loading or resetting a document
+  // Mark any canvas content or view change as unsaved, except during document changes.
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -45,8 +48,9 @@ export default function CanvasHeader() {
       isDocumentLoadingRef.current = false;
       return;
     }
+    editVersionRef.current += 1;
     setSaveStatus('unsaved');
-  }, [geoObjects, gridSettings, isDocumentLoadingRef, setSaveStatus]);
+  }, [geoObjects, gridSettings, transform, canvasName, isDocumentLoadingRef, setSaveStatus]);
 
   const handleSave = useCallback(
     async (isAutosave = false) => {
@@ -56,6 +60,8 @@ export default function CanvasHeader() {
         }
         return;
       }
+
+      if (saveInFlightRef.current) return;
 
       // Check if browser is currently offline
       const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
@@ -69,6 +75,8 @@ export default function CanvasHeader() {
         return;
       }
 
+      saveInFlightRef.current = true;
+      const savedEditVersion = editVersionRef.current;
       setSaveStatus('saving');
       try {
         // Save local backup immediately before remote write
@@ -95,7 +103,12 @@ export default function CanvasHeader() {
 
         setCurrentCanvasId(savedId);
         clearPendingCanvasSync(user.uid, savedId);
-        setSaveStatus('saved');
+        if (editVersionRef.current === savedEditVersion) {
+          setSaveStatus('saved');
+        } else {
+          setSaveStatus('unsaved');
+          setRetrySave((version) => version + 1);
+        }
         setLastSavedAt(new Date().toISOString());
 
         // Update URL query param if this was a newly created canvas
@@ -106,7 +119,14 @@ export default function CanvasHeader() {
         console.error('Failed to save canvas:', err);
         markPendingCanvasSync(user.uid, currentCanvasId);
         const isNetError = typeof navigator !== 'undefined' && (!navigator.onLine || /network|offline|unavailable/i.test(err?.message || ''));
-        setSaveStatus(isNetError ? 'offline' : 'failed');
+        if (editVersionRef.current === savedEditVersion) {
+          setSaveStatus(isNetError ? 'offline' : 'failed');
+        } else {
+          setSaveStatus('unsaved');
+          setRetrySave((version) => version + 1);
+        }
+      } finally {
+        saveInFlightRef.current = false;
       }
     },
     [
@@ -146,7 +166,7 @@ export default function CanvasHeader() {
     }, 3500);
 
     return () => clearTimeout(timer);
-  }, [user, currentCanvasId, saveStatus, geoObjects, canvasName, handleSave]);
+  }, [user, currentCanvasId, saveStatus, geoObjects, canvasName, handleSave, retrySave]);
 
   // Network connectivity listener to sync offline changes automatically
   useEffect(() => {

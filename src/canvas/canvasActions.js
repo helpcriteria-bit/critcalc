@@ -677,6 +677,12 @@ export function applyAction(objects, action, context = {}) {
         if (!Number.isInteger(sides) || sides < 3) {
           return { objects, error: 'Sides must be an integer >= 3.' };
         }
+        if (sides > 64) {
+          return { objects, error: 'Regular polygons are limited to 64 sides.' };
+        }
+        if (objects.length + sides + 1 > 200) {
+          return { objects, error: 'This polygon would exceed the 200-object canvas capacity.' };
+        }
 
         let currentObjects = [...objects];
 
@@ -963,6 +969,46 @@ export function applyAction(objects, action, context = {}) {
         const id = params.id;
         const target = objects.find((o) => o.id === id);
         if (!target) return { objects, error: `Object with id "${id}" not found.` };
+        if (!params.props || typeof params.props !== 'object' || Array.isArray(params.props)) {
+          return { objects, error: 'Object properties must be provided as an object.' };
+        }
+
+        const editableKeys = new Set([
+          'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'radius',
+          'vx', 'vy', 'r1x', 'r1y', 'r2x', 'r2y', 'color', 'strokeColor',
+          'fillColor', 'width', 'label', 'labelOffset', 'visible'
+        ]);
+        const numericKeys = new Set([
+          'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'radius',
+          'vx', 'vy', 'r1x', 'r1y', 'r2x', 'r2y', 'width'
+        ]);
+        for (const [key, value] of Object.entries(params.props)) {
+          if (!editableKeys.has(key)) {
+            return { objects, error: `Property "${key}" cannot be updated.` };
+          }
+          if (numericKeys.has(key) && (!Number.isFinite(value) || Math.abs(value) > 1_000_000)) {
+            return { objects, error: `Property "${key}" must be a finite number within the canvas bounds.` };
+          }
+          if (key === 'width' && value <= 0) {
+            return { objects, error: 'Line width must be a positive number.' };
+          }
+          if (['color', 'strokeColor', 'fillColor', 'label'].includes(key) &&
+              (typeof value !== 'string' || value.length > 100)) {
+            return { objects, error: `Property "${key}" must be a string of at most 100 characters.` };
+          }
+          if (key === 'visible' && typeof value !== 'boolean') {
+            return { objects, error: 'Property "visible" must be a boolean.' };
+          }
+          if (key === 'labelOffset' && (
+            !value || typeof value !== 'object' ||
+            !Number.isFinite(value.x) || !Number.isFinite(value.y)
+          )) {
+            return { objects, error: 'Label offset must contain finite x and y values.' };
+          }
+        }
+        if (Object.keys(params.props).length === 0) {
+          return { objects, error: 'At least one editable property is required.' };
+        }
 
         const updated = objects.map((o) => {
           if (o.id !== id) return o;
@@ -1042,7 +1088,34 @@ export function applyAction(objects, action, context = {}) {
       // 18. SET GRID SETTINGS
       case 'set_grid': {
         if (context.setGridSettings) {
-          context.setGridSettings((prev) => ({ ...prev, ...params }));
+          const allowed = ['showGrid', 'showAxes', 'snapToGrid', 'showRulers', 'gridStyle', 'gridSize', 'unit'];
+          const settings = {};
+          for (const key of allowed) {
+            if (Object.prototype.hasOwnProperty.call(params, key)) {
+              settings[key] = params[key];
+            }
+          }
+          if (Object.keys(settings).length === 0) {
+            return { objects, error: 'At least one valid grid setting is required.' };
+          }
+          for (const key of ['showGrid', 'showAxes', 'snapToGrid', 'showRulers']) {
+            if (Object.prototype.hasOwnProperty.call(settings, key) && typeof settings[key] !== 'boolean') {
+              return { objects, error: `${key} must be a boolean.` };
+            }
+          }
+          if (Object.prototype.hasOwnProperty.call(settings, 'gridStyle') &&
+              !['subdivided', 'lines', 'dots', 'isometric'].includes(settings.gridStyle)) {
+            return { objects, error: 'Grid style is not supported.' };
+          }
+          if (Object.prototype.hasOwnProperty.call(settings, 'gridSize') &&
+              (!Number.isFinite(settings.gridSize) || settings.gridSize < 10 || settings.gridSize > 200)) {
+            return { objects, error: 'Grid size must be between 10 and 200 world units.' };
+          }
+          if (Object.prototype.hasOwnProperty.call(settings, 'unit') &&
+              !['cm', 'px', 'mm', 'in'].includes(settings.unit)) {
+            return { objects, error: 'Measurement unit is not supported.' };
+          }
+          context.setGridSettings(settings);
           return { objects, result: { gridUpdated: true } };
         }
         return { objects, error: 'setGridSettings not available in context.' };
@@ -1055,6 +1128,9 @@ export function applyAction(objects, action, context = {}) {
         }
 
         const viewType = params.type || 'fit';
+        if (!['fit', 'zoom', 'pan', 'reset'].includes(viewType)) {
+          return { objects, error: `Unsupported view type: "${viewType}".` };
+        }
         const viewport = context.getCanvasViewport?.();
         const viewportWidth = viewport?.width || (typeof window !== 'undefined' ? window.innerWidth : 800);
         const viewportHeight = viewport?.height || (typeof window !== 'undefined' ? window.innerHeight : 600);
@@ -1069,12 +1145,20 @@ export function applyAction(objects, action, context = {}) {
           return { objects, result: { view: 'reset' } };
         }
 
-        if (viewType === 'zoom' && Number.isFinite(params.scale)) {
-          context.setTransform((prev) => ({ ...prev, scale: Math.max(0.2, Math.min(params.scale, 5)) }));
-          return { objects, result: { view: 'zoom', scale: params.scale } };
+        if (viewType === 'zoom') {
+          if (!Number.isFinite(params.scale) || params.scale <= 0) {
+            return { objects, error: 'Zoom scale must be a positive finite number.' };
+          }
+          const scale = Math.max(0.15, Math.min(params.scale, 10));
+          context.setTransform((prev) => ({ ...prev, scale }));
+          return { objects, result: { view: 'zoom', scale } };
         }
 
-        if (viewType === 'pan' && Number.isFinite(params.offsetX) && Number.isFinite(params.offsetY)) {
+        if (viewType === 'pan') {
+          if (!Number.isFinite(params.offsetX) || !Number.isFinite(params.offsetY) ||
+              Math.abs(params.offsetX) > 1_000_000 || Math.abs(params.offsetY) > 1_000_000) {
+            return { objects, error: 'Pan offsets must be finite values within the canvas bounds.' };
+          }
           context.setTransform((prev) => ({
             ...prev,
             offsetX: params.offsetX,

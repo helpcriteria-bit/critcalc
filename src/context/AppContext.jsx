@@ -115,17 +115,33 @@ export function AppProvider({ children }) {
 
   const geoObjectsRef = useRef(geoObjects);
   geoObjectsRef.current = geoObjects;
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
+  const updateGridSettingsRef = useRef(null);
 
   const pushHistory = useCallback((snapshot) => {
-    historyRef.current = [...historyRef.current.slice(-39), snapshot];
+    historyRef.current = [
+      ...historyRef.current.slice(-39),
+      {
+        geoObjects: snapshot,
+        transform: transformRef.current,
+        gridSettings: gridSettingsRef.current
+      }
+    ];
     redoRef.current = []; // Clear redo stack on new action
   }, []);
 
   const undo = useCallback(() => {
     if (historyRef.current.length > 0) {
       const prev = historyRef.current.pop();
-      redoRef.current.push([...geoObjectsRef.current]);
-      setGeoObjects(prev);
+      redoRef.current.push({
+        geoObjects: [...geoObjectsRef.current],
+        transform: transformRef.current,
+        gridSettings: gridSettingsRef.current
+      });
+      setGeoObjects(prev.geoObjects);
+      setTransform(prev.transform);
+      updateGridSettingsRef.current?.(prev.gridSettings);
       setSelectedIdState(null);
       setSelectedIdsState([]);
       return true;
@@ -136,8 +152,14 @@ export function AppProvider({ children }) {
   const redo = useCallback(() => {
     if (redoRef.current.length > 0) {
       const next = redoRef.current.pop();
-      historyRef.current.push([...geoObjectsRef.current]);
-      setGeoObjects(next);
+      historyRef.current.push({
+        geoObjects: [...geoObjectsRef.current],
+        transform: transformRef.current,
+        gridSettings: gridSettingsRef.current
+      });
+      setGeoObjects(next.geoObjects);
+      setTransform(next.transform);
+      updateGridSettingsRef.current?.(next.gridSettings);
       setSelectedIdState(null);
       setSelectedIdsState([]);
       return true;
@@ -195,14 +217,15 @@ export function AppProvider({ children }) {
       return updated;
     });
   }, []);
+  updateGridSettingsRef.current = updateGridSettings;
 
   // AI Tutor Model Selection (Default to llama-3.3-70b-versatile for tool calling)
   const [aiModel, setAiModelState] = useState(() => {
     const saved = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('critcalc_ai_model') : null;
-    return saved || 'llama-3.3-70b-versatile';
+    return saved || (aiProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-flash-lite-latest');
   });
 
-  const setAiModel = (model) => {
+  const setAiModel = useCallback((model) => {
     setAiModelState((prev) => {
       const next = typeof model === 'function' ? model(prev) : model;
       if (next !== prev && typeof window !== 'undefined' && window.localStorage) {
@@ -210,7 +233,7 @@ export function AppProvider({ children }) {
       }
       return next;
     });
-  };
+  }, []);
 
   // Toggle "Allow AI to draw" (Default true, persisted in localStorage)
   const [allowAiDraw, setAllowAiDrawState] = useState(() => {
@@ -273,15 +296,15 @@ export function AppProvider({ children }) {
           { ...action, source: 'ai' },
           {
             gridSettings: gridSettingsRef.current,
-            setGridSettings: updateGridSettings,
-            selectObject,
-            setTransform,
+            setGridSettings: () => {},
+            selectObject: () => {},
+            setTransform: () => {},
             getCanvasViewport: () => {
               const rect = activeCanvasElementRef.current?.getBoundingClientRect();
               return rect ? { width: rect.width, height: rect.height } : null;
             },
-            undo,
-            requestConfirmation: (conf) => setPendingConfirmation(conf)
+            undo: () => false,
+            requestConfirmation: () => {}
           }
         );
 
@@ -304,7 +327,7 @@ export function AppProvider({ children }) {
 
       return { results, errors, initialObjects, finalObjects: currentObjects, newlyAdded };
     },
-    [updateGridSettings, selectObject, undo]
+    []
   );
 
   // Apply batch of AI actions with a SINGLE undo snapshot and live animated motion
@@ -317,6 +340,25 @@ export function AppProvider({ children }) {
       pushHistory(initialObjects);
 
       const { results, errors, finalObjects, newlyAdded } = previewAiBatch(actions);
+      const sideEffectActions = actions.filter((action) =>
+        ['set_grid', 'set_view', 'select_object', 'clear_canvas', 'delete_object'].includes(
+          action.type || action.name || action.action
+        )
+      );
+      for (const action of sideEffectActions) {
+        applyAction(finalObjects, { ...action, source: 'ai' }, {
+          gridSettings: gridSettingsRef.current,
+          setGridSettings: updateGridSettings,
+          selectObject,
+          setTransform,
+          getCanvasViewport: () => {
+            const rect = activeCanvasElementRef.current?.getBoundingClientRect();
+            return rect ? { width: rect.width, height: rect.height } : null;
+          },
+          undo,
+          requestConfirmation: (conf) => setPendingConfirmation(conf)
+        });
+      }
 
       // Check student preference for reduced motion
       const prefersReducedMotion =
@@ -339,20 +381,36 @@ export function AppProvider({ children }) {
 
       return { results, errors, finalObjects };
     },
-    [pushHistory, previewAiBatch]
+    [
+      pushHistory,
+      previewAiBatch,
+      updateGridSettings,
+      selectObject,
+      setTransform,
+      activeCanvasElementRef,
+      undo,
+      setPendingConfirmation
+    ]
   );
 
   const undoAiDrawing = useCallback(() => {
     undo();
   }, [undo]);
 
-  const setAiProvider = (provider) => {
+  const setAiProvider = useCallback((provider) => {
     const p = provider === 'groq' ? 'groq' : 'gemini';
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem('mathcanvas_ai_provider', p);
     }
+    if (aiProvider !== p) {
+      const nextModel = p === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-flash-lite-latest';
+      setAiModelState(nextModel);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('critcalc_ai_model', nextModel);
+      }
+    }
     setAiProviderState(p);
-  };
+  }, [aiProvider]);
 
   const setGeminiKey = (key) => {
     const k = (key || '').trim();
