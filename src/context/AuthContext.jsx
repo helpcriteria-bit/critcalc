@@ -5,6 +5,7 @@ import {
   signInWithGoogle as authSignInWithGoogle,
   signInWithEmail as authSignInWithEmail,
   signUpWithEmail as authSignUpWithEmail,
+  resetStudentPassword as authResetStudentPassword,
   signOutStudent as authSignOutStudent
 } from '../firebase/authService';
 
@@ -23,6 +24,11 @@ export function AuthProvider({ children }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && !currentUser.emailVerified) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
       setUser(currentUser);
       setLoading(false);
     });
@@ -55,11 +61,14 @@ export function AuthProvider({ children }) {
   }, [closeAuthModal]);
 
   const signUpWithEmail = useCallback(async (email, password, displayName) => {
-    const newUser = await authSignUpWithEmail(email, password, displayName);
-    setUser(newUser);
-    closeAuthModal();
-    return newUser;
-  }, [closeAuthModal]);
+    const result = await authSignUpWithEmail(email, password, displayName);
+    setUser(null);
+    return result;
+  }, []);
+
+  const resetPassword = useCallback(async (email) => {
+    await authResetStudentPassword(email);
+  }, []);
 
   const signOut = useCallback(async () => {
     await authSignOutStudent();
@@ -79,6 +88,7 @@ export function AuthProvider({ children }) {
         signInWithGoogle,
         signInWithEmail,
         signUpWithEmail,
+        resetPassword,
         signOut
       }}
     >

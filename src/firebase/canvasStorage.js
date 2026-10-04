@@ -8,6 +8,8 @@ import {
   updateDoc,
   query,
   orderBy,
+  startAfter,
+  limit,
   serverTimestamp
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -180,22 +182,20 @@ export async function saveStudentCanvas(uid, canvasId, { name, canvasData, thumb
 }
 
 /**
- * Fetch all canvases for a student, sorted by most recently updated.
+ * Fetch one page of a student's canvases, sorted by most recently updated.
  */
-export async function getStudentCanvases(uid) {
+export async function getStudentCanvases(uid, cursor = null, pageSize = 20) {
   assertFirestore();
-  if (!uid) return [];
+  if (!uid) return { canvases: [], nextCursor: null, hasMore: false };
 
   const canvasesCol = collection(db, 'users', uid, 'canvases');
-  let snapshot;
-  try {
-    const q = query(canvasesCol, orderBy('updatedAt', 'desc'));
-    snapshot = await getDocs(q);
-  } catch (err) {
-    // Fallback without index if orderBy fails
-    console.warn('OrderBy query failed, falling back to unordered fetch:', err);
-    snapshot = await getDocs(canvasesCol);
-  }
+  const q = query(
+    canvasesCol,
+    orderBy('updatedAt', 'desc'),
+    ...(cursor ? [startAfter(cursor)] : []),
+    limit(pageSize)
+  );
+  const snapshot = await getDocs(q);
 
   const list = [];
   snapshot.forEach((docSnap) => {
@@ -209,14 +209,12 @@ export async function getStudentCanvases(uid) {
     });
   });
 
-  // Client-side sort fallback
-  list.sort((a, b) => {
-    const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-    const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    return timeB - timeA;
-  });
-
-  return list;
+  const hasMore = snapshot.docs.length === pageSize;
+  return {
+    canvases: list,
+    nextCursor: hasMore ? snapshot.docs[snapshot.docs.length - 1] : null,
+    hasMore
+  };
 }
 
 /**

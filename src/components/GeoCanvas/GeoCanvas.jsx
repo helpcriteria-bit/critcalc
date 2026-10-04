@@ -20,6 +20,7 @@ export default function GeoCanvas({ onRegisterControls }) {
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handlePointerCancel,
     handleDoubleClick,
     handleWheel,
     undo,
@@ -661,6 +662,7 @@ export default function GeoCanvas({ onRegisterControls }) {
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
           onDoubleClick={handleDoubleClick}
           onWheel={handleWheel}
         />

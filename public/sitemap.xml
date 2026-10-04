@@ -3,7 +3,7 @@
   <!-- Primary Landing Page -->
   <url>
     <loc>https://critcalc.web.app/</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -11,19 +11,19 @@
   <!-- Dedicated SEO Landing Pages -->
   <url>
     <loc>https://critcalc.web.app/scientific-calculator</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://critcalc.web.app/geometry-calculator</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://critcalc.web.app/math-tutor</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -31,19 +31,19 @@
   <!-- Core Interactive App Tool Routes -->
   <url>
     <loc>https://critcalc.web.app/calculator</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://critcalc.web.app/canvas</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://critcalc.web.app/tutor</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -51,7 +51,7 @@
   <!-- Educational Learning Section Hub -->
   <url>
     <loc>https://critcalc.web.app/learn</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -59,25 +59,25 @@
   <!-- Learning Topic Guides -->
   <url>
     <loc>https://critcalc.web.app/learn/algebra</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://critcalc.web.app/learn/geometry</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://critcalc.web.app/learn/trigonometry</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://critcalc.web.app/learn/coordinate-geometry</loc>
-    <lastmod>2026-10-02</lastmod>
+    <lastmod>{{BUILD_DATE}}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

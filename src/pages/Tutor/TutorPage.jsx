@@ -39,7 +39,7 @@ export default function TutorPage() {
         <header className={styles.header}>
           <h1 className={styles.h1Title}>AI Math Tutor</h1>
           <p className={styles.intro}>
-            Get real-time, streaming mathematical explanations, step-by-step geometric proofs, and algebra assistance powered by Groq.
+            Get real-time mathematical explanations, step-by-step geometric proofs, and algebra assistance with Gemini or Groq.
           </p>
         </header>
       ) : (

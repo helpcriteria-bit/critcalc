@@ -11,20 +11,23 @@ export default function AuthModal() {
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
+    resetPassword,
     isConfigured
   } = useAuth();
 
-  const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'reset'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   if (!isAuthModalOpen) return null;
 
   const handleGoogleSignIn = async () => {
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       await signInWithGoogle();
@@ -38,23 +41,30 @@ export default function AuthModal() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
-    if (!email.trim() || !password) {
-      setError('Please provide both email and password.');
+    if (!email.trim() || (mode !== 'reset' && !password)) {
+      setError(mode === 'reset' ? 'Please provide your email address.' : 'Please provide both email and password.');
       return;
     }
 
-    if (mode === 'signup' && password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (mode === 'signup' && password.length < 8) {
+      setError('Password must be at least 8 characters long.');
       return;
     }
 
     setLoading(true);
     try {
-      if (mode === 'signin') {
+      if (mode === 'reset') {
+        await resetPassword(email);
+        setSuccess('If an account exists for that email, a password reset link will be sent.');
+        setMode('signin');
+      } else if (mode === 'signin') {
         await signInWithEmail(email, password);
       } else {
-        await signUpWithEmail(email, password, displayName);
+        const result = await signUpWithEmail(email, password, displayName);
+        setMode('signin');
+        setSuccess(`Account created. Check ${result.email} for a verification link before signing in.`);
       }
     } catch (err) {
       setError(getFriendlyAuthErrorMessage(err.code || err.message));
@@ -83,7 +93,7 @@ export default function AuthModal() {
             </div>
             <div>
               <div id="auth-title" className={styles.title}>
-                {mode === 'signin' ? 'Student Sign In' : 'Create Student Account'}
+                {mode === 'signin' ? 'Student Sign In' : mode === 'signup' ? 'Create Student Account' : 'Reset Password'}
               </div>
               <div className={styles.subtitle}>
                 Save and access your geometric canvases from any device
@@ -121,13 +131,14 @@ export default function AuthModal() {
           </div>
         )}
 
-        <div className={styles.tabs}>
+        {mode !== 'reset' && <div className={styles.tabs}>
           <button
             type="button"
             className={`${styles.tab} ${mode === 'signin' ? styles.activeTab : ''}`}
             onClick={() => {
               setMode('signin');
               setError('');
+              setSuccess('');
             }}
           >
             Sign In
@@ -138,11 +149,12 @@ export default function AuthModal() {
             onClick={() => {
               setMode('signup');
               setError('');
+              setSuccess('');
             }}
           >
             Create Account
           </button>
-        </div>
+        </div>}
 
         <div className={styles.body}>
           {error && (
@@ -155,8 +167,9 @@ export default function AuthModal() {
               <span>{error}</span>
             </div>
           )}
+          {success && <div className={styles.successAlert}>{success}</div>}
 
-          <button
+          {mode !== 'reset' && <button
             type="button"
             className={styles.googleBtn}
             onClick={handleGoogleSignIn}
@@ -181,9 +194,9 @@ export default function AuthModal() {
               />
             </svg>
             <span>Continue with Google</span>
-          </button>
+          </button>}
 
-          <div className={styles.divider}>or with email</div>
+          {mode !== 'reset' && <div className={styles.divider}>or with email</div>}
 
           <form onSubmit={handleSubmit} className={styles.form}>
             {mode === 'signup' && (
@@ -213,7 +226,7 @@ export default function AuthModal() {
               />
             </div>
 
-            <div className={styles.formGroup}>
+            {mode !== 'reset' && <div className={styles.formGroup}>
               <label className={styles.formLabel}>Password</label>
               <input
                 type="password"
@@ -221,10 +234,26 @@ export default function AuthModal() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                minLength={mode === 'signup' ? 8 : undefined}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 required
                 disabled={loading}
               />
-            </div>
+            </div>}
+
+            {mode === 'signin' && (
+              <button
+                type="button"
+                className={styles.textAction}
+                onClick={() => {
+                  setMode('reset');
+                  setError('');
+                  setSuccess('');
+                }}
+              >
+                Forgot password?
+              </button>
+            )}
 
             <button
               type="submit"
@@ -232,9 +261,22 @@ export default function AuthModal() {
               disabled={loading || !isConfigured}
             >
               {loading && <div className={styles.spinner} />}
-              <span>{mode === 'signin' ? 'Sign In to CritCalc' : 'Create Account'}</span>
+              <span>{mode === 'signin' ? 'Sign In to CritCalc' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}</span>
             </button>
           </form>
+          {mode === 'reset' && (
+            <button
+              type="button"
+              className={styles.textAction}
+              onClick={() => {
+                setMode('signin');
+                setError('');
+                setSuccess('');
+              }}
+            >
+              Back to sign in
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ export function isCanvasDrawingCommand(text) {
 }
 
 const BASE_SYSTEM_PROMPT =
-  'You are a sharp, friendly, and expert maths & geometry tutor for a Class 10 student. ' +
+  'You are a sharp, friendly, and expert maths and geometry tutor for secondary-school students. ' +
   'You have full interactive access to a 2D geometry canvas via provided tools.\n\n' +
   'CANVAS SYSTEM & DRAWING RULES:\n' +
   '1. Coordinate system: Origin (0, 0) is at the center of the canvas. Coordinates are in centimeters (cm). ' +

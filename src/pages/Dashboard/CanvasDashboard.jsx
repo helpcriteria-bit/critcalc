@@ -39,6 +39,10 @@ export default function CanvasDashboard() {
 
   const [canvases, setCanvases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [pageCursor, setPageCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'oldest' | 'alpha'
 
@@ -51,19 +55,29 @@ export default function CanvasDashboard() {
   const [renameValue, setRenameValue] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchCanvases = async () => {
+  const fetchCanvases = async ({ append = false } = {}) => {
     if (!user) {
+      setCanvases([]);
+      setPageCursor(null);
+      setHasMore(false);
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (append && !pageCursor) return;
+    setLoadError('');
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     try {
-      const list = await getStudentCanvases(user.uid);
-      setCanvases(list);
+      const page = await getStudentCanvases(user.uid, append ? pageCursor : null);
+      setCanvases((previous) => append ? [...previous, ...page.canvases] : page.canvases);
+      setPageCursor(page.nextCursor);
+      setHasMore(page.hasMore);
     } catch (err) {
       console.error('Error fetching student canvases:', err);
+      setLoadError(err.message || 'Unable to load saved canvases.');
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
   };
 
@@ -205,7 +219,8 @@ export default function CanvasDashboard() {
         <div className={styles.titleArea}>
           <h1 className={styles.title}>My Canvases</h1>
           <div className={styles.subtitle}>
-            {canvases.length} {canvases.length === 1 ? 'project' : 'projects'} saved in student cloud
+            {canvases.length} {canvases.length === 1 ? 'canvas' : 'canvases'} loaded from student cloud
+            {hasMore ? ' · More available' : ''}
           </div>
         </div>
 
@@ -229,7 +244,7 @@ export default function CanvasDashboard() {
           <input
             type="text"
             className={styles.searchInput}
-            placeholder="Search by canvas title..."
+            placeholder="Search loaded canvases..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -400,6 +415,25 @@ export default function CanvasDashboard() {
             <span>Create First Canvas</span>
           </button>
         </div>
+      )}
+
+      {loadError && (
+        <div role="alert" className={styles.emptyDesc}>
+          Could not load canvases: {loadError}
+          <button type="button" className={styles.newBtn} onClick={() => fetchCanvases({ append: Boolean(pageCursor) })}>
+            Retry
+          </button>
+        </div>
+      )}
+      {hasMore && (
+        <button
+          type="button"
+          className={styles.newBtn}
+          onClick={() => fetchCanvases({ append: true })}
+          disabled={loadingMore}
+        >
+          {loadingMore ? 'Loading more…' : 'Load more canvases'}
+        </button>
       )}
 
       {/* Delete Confirmation Modal */}

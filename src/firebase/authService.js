@@ -2,6 +2,8 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
   updateProfile,
   signOut as firebaseSignOut
 } from 'firebase/auth';
@@ -25,7 +27,9 @@ export function getFriendlyAuthErrorMessage(errorCode) {
     case 'auth/email-already-in-use':
       return 'An account with this email already exists. Try signing in instead.';
     case 'auth/weak-password':
-      return 'Password should be at least 6 characters long.';
+      return 'Password should be at least 8 characters long.';
+    case 'auth/email-not-verified':
+      return 'Please verify your email before signing in. A new verification link was sent.';
     case 'auth/popup-closed-by-user':
       return 'Google sign-in popup was closed before completing.';
     case 'auth/popup-blocked':
@@ -54,6 +58,16 @@ export async function signInWithEmail(email, password) {
     throw new Error('Firebase is not configured. Please add your Firebase credentials to .env.');
   }
   const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+  if (!result.user.emailVerified) {
+    try {
+      await sendEmailVerification(result.user);
+    } finally {
+      await firebaseSignOut(auth);
+    }
+    const error = new Error('Email verification is required.');
+    error.code = 'auth/email-not-verified';
+    throw error;
+  }
   return result.user;
 }
 
@@ -67,7 +81,19 @@ export async function signUpWithEmail(email, password, displayName) {
       displayName: displayName.trim()
     });
   }
-  return result.user;
+  try {
+    await sendEmailVerification(result.user);
+  } finally {
+    await firebaseSignOut(auth);
+  }
+  return { email: result.user.email, verificationSent: true };
+}
+
+export async function resetStudentPassword(email) {
+  if (!isFirebaseConfigured || !auth) {
+    throw new Error('Firebase is not configured. Please add your Firebase credentials to .env.');
+  }
+  await sendPasswordResetEmail(auth, email.trim());
 }
 
 export async function signOutStudent() {

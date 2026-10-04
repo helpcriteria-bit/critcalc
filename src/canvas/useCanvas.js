@@ -953,6 +953,9 @@ export function useCanvas() {
 
   // Pointer Interaction state
   const isDraggingRef = useRef(false);
+  const activeTouchPointersRef = useRef(new Map());
+  const pinchRef = useRef(null);
+  const cancelledTouchGestureRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0, offsetX: 0, offsetY: 0, worldX: 0, worldY: 0, objectId: null });
 
   // Helper to ensure a point object exists at pos or retrieve existing point
@@ -977,6 +980,30 @@ export function useCanvas() {
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (e.pointerType === 'touch') {
+      activeTouchPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activeTouchPointersRef.current.size >= 2) {
+        const [first, second] = Array.from(activeTouchPointersRef.current.values());
+        const rect = canvas.getBoundingClientRect();
+        const centerX = (first.x + second.x) / 2 - rect.left;
+        const centerY = (first.y + second.y) / 2 - rect.top;
+        const { scale, offsetX, offsetY } = transformRef.current;
+        pinchRef.current = {
+          distance: Math.max(1, Math.hypot(second.x - first.x, second.y - first.y)),
+          scale,
+          worldX: (centerX - offsetX) / scale,
+          worldY: (centerY - offsetY) / scale
+        };
+        cancelledTouchGestureRef.current = true;
+        isDraggingRef.current = false;
+        dragStartRef.current = null;
+        setDraftState(null);
+        setIsPanning(false);
+        e.preventDefault();
+        if (e.currentTarget?.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
     const rect = canvas.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
@@ -995,10 +1022,12 @@ export function useCanvas() {
         offsetY: transformRef.current.offsetY,
         isPan: true
       };
+      if (e.currentTarget?.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
 
     if (e.button !== 0) return;
+    if (e.currentTarget?.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
 
     const hitId = findObjectAt(sx, sy);
     const hitObj = hitId ? geoObjects.find(o => o.id === hitId) : null;
@@ -1725,6 +1754,25 @@ export function useCanvas() {
   const handlePointerMove = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (e.pointerType === 'touch' && activeTouchPointersRef.current.has(e.pointerId)) {
+      activeTouchPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (activeTouchPointersRef.current.size >= 2 && pinchRef.current) {
+      const [first, second] = Array.from(activeTouchPointersRef.current.values());
+      const rect = canvas.getBoundingClientRect();
+      const centerX = (first.x + second.x) / 2 - rect.left;
+      const centerY = (first.y + second.y) / 2 - rect.top;
+      const distance = Math.max(1, Math.hypot(second.x - first.x, second.y - first.y));
+      const pinch = pinchRef.current;
+      const scale = Math.max(0.15, Math.min(pinch.scale * distance / pinch.distance, 10));
+      setTransform({
+        scale,
+        offsetX: centerX - pinch.worldX * scale,
+        offsetY: centerY - pinch.worldY * scale
+      });
+      return;
+    }
+    if (cancelledTouchGestureRef.current) return;
     const rect = canvas.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
@@ -1843,7 +1891,20 @@ export function useCanvas() {
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e) => {
+    if (e?.pointerType === 'touch') {
+      activeTouchPointersRef.current.delete(e.pointerId);
+      if (cancelledTouchGestureRef.current) {
+        if (activeTouchPointersRef.current.size === 0) {
+          pinchRef.current = null;
+          cancelledTouchGestureRef.current = false;
+        }
+        isDraggingRef.current = false;
+        dragStartRef.current = null;
+        setIsPanning(false);
+        return;
+      }
+    }
     if (isDraggingRef.current) {
       if (dragStartRef.current?.isPan) {
         setIsPanning(false);
@@ -1923,7 +1984,24 @@ export function useCanvas() {
         }
       }
       isDraggingRef.current = false;
+      dragStartRef.current = null;
     }
+  };
+
+  const handlePointerCancel = (e) => {
+    if (e?.pointerType === 'touch') {
+      activeTouchPointersRef.current.delete(e.pointerId);
+      if (activeTouchPointersRef.current.size === 0) {
+        pinchRef.current = null;
+        cancelledTouchGestureRef.current = false;
+      }
+    }
+    isDraggingRef.current = false;
+    dragStartRef.current = null;
+    setDraftState(null);
+    selectionBoxRef.current = null;
+    setSelectionBox(null);
+    setIsPanning(false);
   };
 
   // Zoom on scroll wheel
@@ -1978,6 +2056,7 @@ export function useCanvas() {
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handlePointerCancel,
     handleDoubleClick,
     handleWheel,
     undo,

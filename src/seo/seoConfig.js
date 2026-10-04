@@ -4,12 +4,12 @@
 
 export const SITE_URL = 'https://critcalc.web.app';
 export const SITE_NAME = 'CritCalc';
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/favicon.svg`;
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 export const SEO_DATA = {
   '/': {
     title: 'Free Online Math Calculator, Geometry Tools & Math Tutor | CritCalc',
-    description: 'CritCalc is a free interactive math platform combining a scientific calculator, dynamic geometry canvas, and AI math tutor built for Class 10 and high school students.',
+    description: 'CritCalc is a free interactive math platform combining a scientific calculator, dynamic geometry canvas, and AI math tutor for secondary-school students.',
     canonical: `${SITE_URL}/`,
     robots: 'index, follow',
     ogTitle: 'Free Online Math Calculator, Geometry Tools & Math Tutor | CritCalc',
@@ -49,7 +49,7 @@ export const SEO_DATA = {
               name: 'What tools are included in CritCalc?',
               acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'CritCalc includes a full-featured Scientific Calculator, an interactive dynamic Geometry Canvas with construction tools, and an AI Math Tutor powered by Groq.'
+                text: 'CritCalc includes a full-featured Scientific Calculator, an interactive dynamic Geometry Canvas with construction tools, and an AI Math Tutor powered by Gemini or Groq.'
               }
             },
             {
@@ -219,11 +219,11 @@ export const SEO_DATA = {
 
   '/math-tutor': {
     title: 'AI Math Tutor — Geometry Proofs & Problem Solving | CritCalc',
-    description: 'Get instant, streaming explanations for geometry, algebra, and trigonometry problems with CritCalc’s AI Math Tutor powered by Groq.',
+    description: 'Get real-time explanations for geometry, algebra, and trigonometry problems with CritCalc’s AI Math Tutor using Gemini or Groq.',
     canonical: `${SITE_URL}/math-tutor`,
     robots: 'index, follow',
     ogTitle: 'AI Math Tutor — Geometry Proofs & Problem Solving | CritCalc',
-    ogDescription: 'Ask geometry proofs, trigonometry identities, and Class 10 math questions with real-time streaming AI assistance.',
+    ogDescription: 'Ask geometry proofs, trigonometry identities, and secondary-school math questions with real-time AI assistance.',
     ogUrl: `${SITE_URL}/math-tutor`,
     ogImage: DEFAULT_OG_IMAGE,
     ogType: 'website',
@@ -248,7 +248,7 @@ export const SEO_DATA = {
               name: 'How does the AI Math Tutor work?',
               acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'The AI Math Tutor uses ultra-fast Groq streaming inference to break down math problems step by step, guide students through proofs, and explain concepts.'
+                text: 'The AI Math Tutor uses Gemini or Groq to break down math problems step by step, guide students through proofs, and explain concepts.'
               }
             },
             {
@@ -289,7 +289,7 @@ export const SEO_DATA = {
 
   '/learn': {
     title: 'Math Learning Guides & Lessons | CritCalc Education',
-    description: 'Explore clear, practical math guides for Class 10 and high school. Learn algebra, geometry theorems, trigonometry ratios, and coordinate geometry.',
+    description: 'Explore clear, practical math guides for secondary and high school. Learn algebra, geometry theorems, trigonometry ratios, and coordinate geometry.',
     canonical: `${SITE_URL}/learn`,
     robots: 'index, follow',
     ogTitle: 'Math Learning Guides & Lessons | CritCalc Education',

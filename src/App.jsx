@@ -1,54 +1,85 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar/Navbar';
 import AuthModal from './components/Auth/AuthModal';
+import SEO from './components/SEO/SEO';
 
-// Existing App Pages
-import Home from './pages/Home/Home';
-import CanvasPage from './pages/Canvas/CanvasPage';
-import CanvasDashboard from './pages/Dashboard/CanvasDashboard';
-import CalculatorPage from './pages/Calculator/CalculatorPage';
-import TutorPage from './pages/Tutor/TutorPage';
+const routeLoaders = [
+  () => import('./pages/Home/Home'),
+  () => import('./pages/Canvas/CanvasPage'),
+  () => import('./pages/Dashboard/CanvasDashboard'),
+  () => import('./pages/Calculator/CalculatorPage'),
+  () => import('./pages/Tutor/TutorPage'),
+  () => import('./pages/LandingPages/ScientificCalculatorLanding'),
+  () => import('./pages/LandingPages/GeometryCalculatorLanding'),
+  () => import('./pages/LandingPages/MathTutorLanding'),
+  () => import('./pages/Learn/LearnIndex'),
+  () => import('./pages/Learn/AlgebraLesson'),
+  () => import('./pages/Learn/GeometryLesson'),
+  () => import('./pages/Learn/TrigonometryLesson'),
+  () => import('./pages/Learn/CoordinateGeometryLesson')
+];
 
-// Dedicated SEO Landing Pages
-import ScientificCalculatorLanding from './pages/LandingPages/ScientificCalculatorLanding';
-import GeometryCalculatorLanding from './pages/LandingPages/GeometryCalculatorLanding';
-import MathTutorLanding from './pages/LandingPages/MathTutorLanding';
+const lazyRouteComponents = routeLoaders.map((load) => lazy(load));
+let preloadedRouteComponents = null;
 
-// Educational Learning Guides
-import LearnIndex from './pages/Learn/LearnIndex';
-import AlgebraLesson from './pages/Learn/AlgebraLesson';
-import GeometryLesson from './pages/Learn/GeometryLesson';
-import TrigonometryLesson from './pages/Learn/TrigonometryLesson';
-import CoordinateGeometryLesson from './pages/Learn/CoordinateGeometryLesson';
+export async function preloadRouteModules() {
+  const modules = await Promise.all(routeLoaders.map((load) => load()));
+  preloadedRouteComponents = modules.map((module) => module.default);
+}
+
+function NotFound() {
+  return (
+    <section style={{ display: 'grid', placeContent: 'center', height: '100%', textAlign: 'center', gap: 12 }}>
+      <SEO title="Page Not Found | CritCalc" robots="noindex, nofollow" />
+      <h1>Page not found</h1>
+      <p>The address may be incorrect, or the page may have moved.</p>
+      <Link to="/">Return to CritCalc</Link>
+    </section>
+  );
+}
 
 export function AppLayout() {
+  const [
+    Home,
+    CanvasPage,
+    CanvasDashboard,
+    CalculatorPage,
+    TutorPage,
+    ScientificCalculatorLanding,
+    GeometryCalculatorLanding,
+    MathTutorLanding,
+    LearnIndex,
+    AlgebraLesson,
+    GeometryLesson,
+    TrigonometryLesson,
+    CoordinateGeometryLesson
+  ] = preloadedRouteComponents || lazyRouteComponents;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       <Navbar />
       <main style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <Routes>
-          {/* Core Application Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/canvas" element={<CanvasPage />} />
-          <Route path="/my-canvases" element={<CanvasDashboard />} />
-          <Route path="/calculator" element={<CalculatorPage />} />
-          <Route path="/tutor" element={<TutorPage />} />
-
-          {/* Dedicated SEO Landing Pages */}
-          <Route path="/scientific-calculator" element={<ScientificCalculatorLanding />} />
-          <Route path="/geometry-calculator" element={<GeometryCalculatorLanding />} />
-          <Route path="/math-tutor" element={<MathTutorLanding />} />
-
-          {/* Educational Learning Pages */}
-          <Route path="/learn" element={<LearnIndex />} />
-          <Route path="/learn/algebra" element={<AlgebraLesson />} />
-          <Route path="/learn/geometry" element={<GeometryLesson />} />
-          <Route path="/learn/trigonometry" element={<TrigonometryLesson />} />
-          <Route path="/learn/coordinate-geometry" element={<CoordinateGeometryLesson />} />
-        </Routes>
+        <Suspense fallback={<div role="status" aria-live="polite" style={{ padding: 24 }}>Loading page…</div>}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/canvas" element={<CanvasPage />} />
+            <Route path="/my-canvases" element={<CanvasDashboard />} />
+            <Route path="/calculator" element={<CalculatorPage />} />
+            <Route path="/tutor" element={<TutorPage />} />
+            <Route path="/scientific-calculator" element={<ScientificCalculatorLanding />} />
+            <Route path="/geometry-calculator" element={<GeometryCalculatorLanding />} />
+            <Route path="/math-tutor" element={<MathTutorLanding />} />
+            <Route path="/learn" element={<LearnIndex />} />
+            <Route path="/learn/algebra" element={<AlgebraLesson />} />
+            <Route path="/learn/geometry" element={<GeometryLesson />} />
+            <Route path="/learn/trigonometry" element={<TrigonometryLesson />} />
+            <Route path="/learn/coordinate-geometry" element={<CoordinateGeometryLesson />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </main>
       <AuthModal />
     </div>

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { StaticRouter } from 'react-router-dom/server.js';
+import { StaticRouter } from 'react-router-dom';
 import { createServer } from 'vite';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,7 +53,8 @@ async function prerender() {
   });
 
   try {
-    const { default: App } = await vite.ssrLoadModule('./src/App.jsx');
+    const { default: App, preloadRouteModules } = await vite.ssrLoadModule('./src/App.jsx');
+    await preloadRouteModules();
     const { SEO_DATA, SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME } = await vite.ssrLoadModule('./src/seo/seoConfig.js');
 
     const results = [];
@@ -156,6 +157,20 @@ async function prerender() {
         h1: h1Text
       });
     }
+
+    const sitemapPath = path.resolve(distDir, 'sitemap.xml');
+    if (!fs.existsSync(sitemapPath)) {
+      throw new Error('dist/sitemap.xml not found. Ensure public/sitemap.xml is present.');
+    }
+    const sitemap = fs.readFileSync(sitemapPath, 'utf-8');
+    if (!sitemap.includes('{{BUILD_DATE}}')) {
+      throw new Error('Sitemap is missing its build-date placeholder.');
+    }
+    fs.writeFileSync(
+      sitemapPath,
+      sitemap.replaceAll('{{BUILD_DATE}}', new Date().toISOString().slice(0, 10)),
+      'utf-8'
+    );
 
     console.log('\n✅ [CritCalc Prerender] Successfully generated static HTML for all public routes:');
     console.table(

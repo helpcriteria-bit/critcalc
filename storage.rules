@@ -4,12 +4,17 @@ service firebase.storage {
 
     // Student Assets Storage: users/{userId}/assets/{assetId}
     match /users/{userId}/{allPaths=**} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.uid == userId;
       allow create, update: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.auth.uid == userId
         && request.resource.size <= 5 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.uid == userId;
     }
 
     // Default deny for all other paths
