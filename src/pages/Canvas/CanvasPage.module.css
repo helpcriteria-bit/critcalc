@@ -71,3 +71,23 @@
   font-size: 12px;
   color: var(--muted);
 }
+
+@media (pointer: coarse), (max-width: 700px) {
+  .canvasViewport {
+    min-height: 0;
+  }
+
+  .page {
+    min-height: 0;
+  }
+
+  .guideTrigger {
+    top: 8px;
+    right: auto;
+    bottom: auto;
+    left: 8px;
+    max-width: calc(100% - 16px);
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+}

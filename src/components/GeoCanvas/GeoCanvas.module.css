@@ -32,6 +32,17 @@
   cursor: crosshair;
 }
 
+@media (pointer: coarse), (max-width: 700px) {
+  .canvasContainer {
+    min-height: 0;
+  }
+
+  .canvasWrapperWithRulers,
+  .canvasWrapperFull {
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* Photoshop-style Rulers */
 .rulerCorner {
   position: absolute;
@@ -290,6 +301,22 @@
   pointer-events: none;
 }
 
+@media (pointer: coarse), (max-width: 700px) {
+  .statusBar {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    left: 8px !important;
+    max-width: calc(100% - 16px);
+    padding: 4px 7px;
+    gap: 5px;
+    font-size: 9px;
+  }
+
+  .statusBar .divider,
+  .statusBar > span:nth-child(n + 4) {
+    display: none;
+  }
+}
+
 .divider {
   color: var(--border2);
 }
@@ -384,4 +411,3 @@
   color: #ffffff;
   background: rgba(255, 255, 255, 0.1);
 }
-
