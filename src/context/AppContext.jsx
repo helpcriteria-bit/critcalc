@@ -8,19 +8,12 @@ export function AppProvider({ children }) {
 
   const readGeminiKey = () => {
     const stored = (typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('mathcanvas_gemini_key') : '') || '';
-    const env = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
-    const fbKey = (import.meta.env.VITE_FIREBASE_API_KEY || '').trim();
-    if (!isPlaceholder(stored.trim()) && (!fbKey || stored.trim() !== fbKey)) return stored.trim();
-    if (!isPlaceholder(env)) return env;
-    return '';
+    return isPlaceholder(stored.trim()) ? '' : stored.trim();
   };
 
   const readGroqKey = () => {
     const stored = (typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('mathcanvas_groq_key') : '') || '';
-    const env = (import.meta.env.VITE_GROQ_API_KEY || '').trim();
-    if (!isPlaceholder(stored.trim())) return stored.trim();
-    if (!isPlaceholder(env)) return env;
-    return '';
+    return isPlaceholder(stored.trim()) ? '' : stored.trim();
   };
 
   const readProvider = () => {
@@ -84,6 +77,18 @@ export function AppProvider({ children }) {
     setSaveStatus('saved');
     setLastSavedAt(null);
   }, []);
+
+  useEffect(() => {
+    const clearStudentState = () => {
+      setGeminiKeyState('');
+      setGroqKeyState('');
+      setAiProviderState('gemini');
+      setChatHistory([]);
+      resetCanvasToNew();
+    };
+    window.addEventListener('critcalc:signout', clearStudentState);
+    return () => window.removeEventListener('critcalc:signout', clearStudentState);
+  }, [resetCanvasToNew]);
 
   // Pan & Zoom transform lifted to shared context
   const [transform, setTransform] = useState({ offsetX: 0, offsetY: 0, scale: 1.2 });

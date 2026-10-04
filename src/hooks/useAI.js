@@ -133,6 +133,12 @@ async function timedFetch(url, options, ms = 25000) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+function getApiKeyHeaders(provider, key) {
+  return provider === 'gemini'
+    ? { 'x-goog-api-key': key }
+    : { Authorization: `Bearer ${key}` };
+}
+
 // Non-streaming completion call with tool calling
 async function callChatOnce({ provider, key, model, messages, tools, tool_choice }) {
   const base = provider === 'gemini' ? GEMINI_API_BASE : GROQ_API_BASE;
@@ -147,15 +153,13 @@ async function callChatOnce({ provider, key, model, messages, tools, tool_choice
     body.tool_choice = tool_choice || 'auto';
   }
 
-  const url = provider === 'gemini'
-    ? `${base}/chat/completions?key=${encodeURIComponent(key)}`
-    : `${base}/chat/completions`;
+  const url = `${base}/chat/completions`;
 
   const res = await timedFetch(
     url,
     {
       method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      headers: { ...getApiKeyHeaders(provider, key), 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     },
     25000
@@ -167,15 +171,13 @@ async function callChatOnce({ provider, key, model, messages, tools, tool_choice
 // Streaming completion call
 async function streamOnce({ provider, key, model, messages, onToken }) {
   const base = provider === 'gemini' ? GEMINI_API_BASE : GROQ_API_BASE;
-  const url = provider === 'gemini'
-    ? `${base}/chat/completions?key=${encodeURIComponent(key)}`
-    : `${base}/chat/completions`;
+  const url = `${base}/chat/completions`;
 
   const res = await timedFetch(
     url,
     {
       method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      headers: { ...getApiKeyHeaders(provider, key), 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, messages, max_tokens: 1024, temperature: 0.6, stream: true })
     },
     20000
@@ -278,7 +280,11 @@ export function useAI() {
 
     try {
       if (prov === 'gemini') {
-        const res = await timedFetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`, {}, 8000);
+        const res = await timedFetch(
+          'https://generativelanguage.googleapis.com/v1beta/models',
+          { headers: getApiKeyHeaders(prov, key) },
+          8000
+        );
         if (!res.ok) throw await toAIError(res, 'gemini');
         const data = await res.json();
         const rawModels = data.models || [];
@@ -303,7 +309,11 @@ export function useAI() {
           setModels(GEMINI_FALLBACK_MODELS);
         }
       } else {
-        const res = await timedFetch(`${GROQ_API_BASE}/models`, { headers: { Authorization: `Bearer ${key}` } }, 8000);
+        const res = await timedFetch(
+          `${GROQ_API_BASE}/models`,
+          { headers: getApiKeyHeaders(prov, key) },
+          8000
+        );
         if (!res.ok) throw await toAIError(res, 'groq');
         const data = await res.json();
         const ids = (data.data || []).map((m) => m.id).filter((id) => !NOT_CHAT.test(id)).sort();

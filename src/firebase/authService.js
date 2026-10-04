@@ -6,6 +6,7 @@ import {
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured } from './config';
+import { clearStudentLocalData } from './canvasStorage';
 
 /**
  * Maps Firebase Auth error codes to student-friendly messages.
@@ -70,6 +71,8 @@ export async function signUpWithEmail(email, password, displayName) {
 }
 
 export async function signOutStudent() {
-  if (!auth) return;
-  await firebaseSignOut(auth);
+  if (auth) {
+    await firebaseSignOut(auth);
+  }
+  clearStudentLocalData();
 }

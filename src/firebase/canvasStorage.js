@@ -24,6 +24,23 @@ function assertFirestore() {
 
 const LOCAL_STORAGE_PREFIX = 'critcalc_canvas_draft_';
 const PENDING_SYNC_KEY = 'critcalc_pending_syncs';
+const AI_KEY_STORAGE_KEYS = ['mathcanvas_gemini_key', 'mathcanvas_groq_key'];
+
+export function clearStudentLocalData() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    if (!window.localStorage) return;
+    const draftKeys = Object.keys(window.localStorage).filter((key) => key.startsWith(LOCAL_STORAGE_PREFIX));
+    for (const key of [...draftKeys, PENDING_SYNC_KEY, ...AI_KEY_STORAGE_KEYS]) {
+      window.localStorage.removeItem(key);
+    }
+  } catch (err) {
+    console.error('Failed to clear all student data from local storage:', err);
+  } finally {
+    window.dispatchEvent(new Event('critcalc:signout'));
+  }
+}
 
 /**
  * Save a local fallback draft to localStorage in case user is offline or Firestore is unreachable.

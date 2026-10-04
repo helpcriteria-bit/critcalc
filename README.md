@@ -19,12 +19,12 @@ npm install
 ```
 
 ### 2. Environment Setup
-Copy `.env.example` to `.env` and add the API keys you intend to use locally (optional, for AI Tutor):
+Copy `.env.example` to `.env` and configure your Firebase web app settings (optional, for student authentication and cloud saves):
 ```bash
 cp .env.example .env
 ```
 
-Do not commit `.env` or put unrestricted API keys in a public deployment. Browser-based API keys are visible to visitors; restrict them to the required APIs and production domain, or use a server-side proxy.
+AI provider keys are entered in the tutor UI and stored in the current browser; they are removed from local storage when the student signs out. Browser-based API keys are visible to that browser's user, so restrict them to the required APIs and use a server-side proxy for shared or public deployments. Never put Gemini or Groq secrets in `VITE_*` variables: Vite exposes those values in the public bundle.
 
 ### 3. Start Development Server
 ```bash

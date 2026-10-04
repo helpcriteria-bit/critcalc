@@ -16,7 +16,26 @@ service cloud.firestore {
     }
 
     function isValidCanvasData(data) {
-      return data is map;
+      return data is map
+        && data.keys().hasOnly(['geoObjects', 'gridSettings', 'transform'])
+        && data.keys().hasAll(['geoObjects', 'gridSettings', 'transform'])
+        && data.geoObjects is list
+        && data.geoObjects.size() <= 200
+        && data.gridSettings is map
+        && data.transform is map;
+    }
+
+    function isValidThumbnail(data) {
+      return !data.keys().hasAny(['thumbnail'])
+        || data.thumbnail == null
+        || (data.thumbnail is string && data.thumbnail.size() <= 300000);
+    }
+
+    function isValidCanvasDocument(data) {
+      return data.keys().hasOnly(['userId', 'name', 'canvasData', 'thumbnail', 'createdAt', 'updatedAt'])
+        && isValidCanvasName(data.name)
+        && isValidCanvasData(data.canvasData)
+        && isValidThumbnail(data);
     }
 
     // User Profile Document: users/{userId}
@@ -33,14 +52,12 @@ service cloud.firestore {
       // Students can only create canvases inside their own namespace with valid data and matching userId
       allow create: if isOwner(userId)
                     && request.resource.data.userId == request.auth.uid
-                    && isValidCanvasName(request.resource.data.name)
-                    && isValidCanvasData(request.resource.data.canvasData);
+                    && isValidCanvasDocument(request.resource.data);
 
       // Students can only update their own canvases; ownership cannot be reassigned
       allow update: if isOwner(userId)
                     && request.resource.data.get('userId', userId) == userId
-                    && isValidCanvasName(request.resource.data.name)
-                    && isValidCanvasData(request.resource.data.canvasData);
+                    && isValidCanvasDocument(request.resource.data);
 
       // Students can only delete their own canvases
       allow delete: if isOwner(userId);
