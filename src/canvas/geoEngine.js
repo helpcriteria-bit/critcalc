@@ -807,8 +807,8 @@ export function solveDependencies(objects) {
 
   let updated = objects.map(o => ({ ...o }));
 
-  // Run up to 3 passes to settle multi-level dependencies
-  for (let pass = 0; pass < 3; pass++) {
+  // Dependencies may form long chains; at most one pass per canvas object is needed.
+  for (let pass = 0; pass < updated.length; pass++) {
     const passMap = new Map(updated.map(o => [o.id, o]));
     updated = updated.map(obj => {
       // 1. Points with dependencies (Midpoint, Intersection)
@@ -827,8 +827,8 @@ export function solveDependencies(objects) {
             }
           }
           if (p1 && p2) {
-            const mx = Math.round(((p1.x + p2.x) / 2) * 10) / 10;
-            const my = Math.round(((p1.y + p2.y) / 2) * 10) / 10;
+            const mx = (p1.x + p2.x) / 2;
+            const my = (p1.y + p2.y) / 2;
             return { ...obj, x: mx, y: my };
           }
         } else if (dep.type === 'intersection') {
@@ -840,7 +840,7 @@ export function solveDependencies(objects) {
               { x: l2.x1, y: l2.y1 }, { x: l2.x2, y: l2.y2 }
             );
             if (pt) {
-              return { ...obj, x: Math.round(pt.x * 10) / 10, y: Math.round(pt.y * 10) / 10 };
+              return { ...obj, x: pt.x, y: pt.y };
             }
           }
         }

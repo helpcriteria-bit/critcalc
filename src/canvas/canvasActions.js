@@ -4,17 +4,17 @@
  * and canvas world pixel space (1 cm = 40 world px, Y down).
  */
 
-import { generateId } from './idGenerator';
+import { generateId } from './idGenerator.js';
 import {
   DEFAULT_COLORS,
   calculatePolygonArea,
   calculatePolygonPerimeter,
   getPolygonName
-} from './geoEngine';
+} from './geoEngine.js';
 import {
   calculateTriangleMetrics,
   calculatePolygonMetrics
-} from '../utils/mathTutorEngine';
+} from '../utils/mathTutorEngine.js';
 
 export const CM_TO_PX = 40; // 1 cm = 40 world px
 

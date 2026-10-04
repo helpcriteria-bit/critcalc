@@ -105,13 +105,6 @@ export function evaluateExpression(exprString, options = {}) {
     return res;
   }
 
-  // Grammar:
-  // parseExpr()      = parseTerm() (( '+' | '-' ) parseTerm())*
-  // parseTerm()      = parseFactor() (( '*' | '/' | '%' | 'mod' ) parseFactor())*
-  // parseFactor()    = parseUnary() ( '^' parseFactor() )?
-  // parseUnary()     = ('+' | '-')? parsePrimary() ('!')*
-  // parsePrimary()   = NUMBER | IDENT(args) | IDENT | '(' parseExpr() ')'
-
   function parseExpr() {
     let left = parseTerm();
     while (tokenIdx < tokens.length) {
@@ -132,7 +125,23 @@ export function evaluateExpression(exprString, options = {}) {
     let left = parseFactor();
     while (tokenIdx < tokens.length) {
       const tok = peek();
-      if (tok && ((tok.type === 'OP' && ['*', '/', '%'].includes(tok.value)) || (tok.type === 'IDENT' && tok.value === 'mod'))) {
+      const next = tokens[tokenIdx + 1];
+      const isModulo = tok && (
+        (tok.type === 'OP' && tok.value === '%') ||
+        (tok.type === 'IDENT' && tok.value === 'mod')
+      ) && next && (
+        next.type === 'NUMBER' ||
+        next.type === 'IDENT' ||
+        (next.type === 'OP' && next.value === '(')
+      );
+      const isExplicitOperator = tok && tok.type === 'OP' && ['*', '/', '%'].includes(tok.value) &&
+        (tok.value !== '%' || isModulo);
+      const isWordModulo = tok && tok.type === 'IDENT' && tok.value === 'mod';
+      const isImplicitProduct = tok && (
+        tok.type === 'IDENT' && tok.value.toLowerCase() !== 'mod' ||
+        tok.type === 'OP' && tok.value === '('
+      );
+      if (isExplicitOperator || isWordModulo) {
         consume();
         const right = parseFactor();
         if (tok.value === '*') left = left * right;
@@ -143,6 +152,8 @@ export function evaluateExpression(exprString, options = {}) {
           if (right === 0) throw new Error('Modulo by zero');
           left = left % right;
         }
+      } else if (isImplicitProduct) {
+        left *= parseFactor();
       } else {
         break;
       }
@@ -151,14 +162,7 @@ export function evaluateExpression(exprString, options = {}) {
   }
 
   function parseFactor() {
-    let base = parseUnary();
-    const tok = peek();
-    if (tok && tok.type === 'OP' && tok.value === '^') {
-      consume();
-      const exponent = parseFactor(); // Right associative
-      return Math.pow(base, exponent);
-    }
-    return base;
+    return parseUnary();
   }
 
   function parseUnary() {
@@ -168,10 +172,38 @@ export function evaluateExpression(exprString, options = {}) {
       const operand = parseUnary();
       return tok.value === '-' ? -operand : operand;
     }
-    let prim = parsePrimary();
-    while (tokenIdx < tokens.length && peek() && peek().type === 'OP' && peek().value === '!') {
+    return parsePower();
+  }
+
+  function parsePower() {
+    const base = parsePostfix();
+    const tok = peek();
+    if (tok && tok.type === 'OP' && tok.value === '^') {
       consume();
-      prim = factorial(prim);
+      return Math.pow(base, parseUnary());
+    }
+    return base;
+  }
+
+  function parsePostfix() {
+    let prim = parsePrimary();
+    while (tokenIdx < tokens.length) {
+      const tok = peek();
+      if (tok?.type === 'OP' && tok.value === '!') {
+        consume();
+        prim = factorial(prim);
+      } else if (tok?.type === 'OP' && tok.value === '%') {
+        const next = tokens[tokenIdx + 1];
+        if (next && (
+          next.type === 'NUMBER' ||
+          next.type === 'IDENT' ||
+          (next.type === 'OP' && next.value === '(')
+        )) break;
+        consume();
+        prim /= 100;
+      } else {
+        break;
+      }
     }
     return prim;
   }
@@ -219,22 +251,21 @@ export function evaluateExpression(exprString, options = {}) {
       // Check for constants or variables
       if (name === 'pi') return Math.PI;
       if (name === 'e') return Math.E;
-      if (variables[tok.value] !== undefined) return variables[tok.value];
-      if (variables[name] !== undefined) return variables[name];
+      for (const variableName of [tok.value, name]) {
+        if (Object.prototype.hasOwnProperty.call(variables, variableName)) {
+          const value = variables[variableName];
+          if (typeof value !== 'number' || !Number.isFinite(value)) {
+            throw new Error(`Variable '${tok.value}' must contain a finite number`);
+          }
+          return value;
+        }
+      }
 
       // Handle function used without parenthesis like sin30 or sqrt9 if applicable
       throw new Error(`Unknown variable or function call missing '()': ${tok.value}`);
     }
 
     throw new Error(`Unexpected token '${tok.value}'`);
-  }
-
-  function factorial(n) {
-    if (n < 0 || Math.floor(n) !== n) throw new Error('Factorial requires non-negative integer');
-    if (n > 170) return Infinity;
-    let res = 1;
-    for (let j = 2; j <= n; j++) res *= j;
-    return res;
   }
 
   function applyFunction(name, arg, isDeg) {
@@ -291,6 +322,9 @@ export function evaluateExpression(exprString, options = {}) {
   const result = parseExpr();
   if (tokenIdx < tokens.length) {
     throw new Error(`Unexpected token '${tokens[tokenIdx].value}'`);
+  }
+  if (!Number.isFinite(result)) {
+    throw new Error('Result is not finite');
   }
   return result;
 }
