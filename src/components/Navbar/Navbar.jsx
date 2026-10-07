@@ -11,6 +11,7 @@ export default function Navbar() {
 
   const [showKeyDropdown, setShowKeyDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState(aiProvider || 'gemini');
   const [tempKey, setTempKey] = useState('');
 
@@ -82,23 +83,36 @@ export default function Navbar() {
         </NavLink>
       </div>
 
-      <nav className={styles.center}>
-        <NavLink to="/" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} end>
+      <button
+        type="button"
+        className={styles.menuButton}
+        aria-expanded={showMobileNav}
+        aria-controls="primary-navigation"
+        aria-label={showMobileNav ? 'Close navigation menu' : 'Open navigation menu'}
+        onClick={() => setShowMobileNav((isOpen) => !isOpen)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      <nav id="primary-navigation" className={`${styles.center} ${showMobileNav ? styles.mobileOpen : ''}`} aria-label="Main navigation">
+        <NavLink to="/" onClick={() => setShowMobileNav(false)} className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} end>
           Home
         </NavLink>
-        <NavLink to="/canvas" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
+        <NavLink to="/canvas" onClick={() => setShowMobileNav(false)} className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
           Canvas
         </NavLink>
-        <NavLink to="/my-canvases" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
+        <NavLink to="/my-canvases" onClick={() => setShowMobileNav(false)} className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
           My Canvases
         </NavLink>
-        <NavLink to="/calculator" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
+        <NavLink to="/calculator" onClick={() => setShowMobileNav(false)} className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
           Calculator
         </NavLink>
-        <NavLink to="/tutor" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
+        <NavLink to="/tutor" onClick={() => setShowMobileNav(false)} className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
           Tutor
         </NavLink>
-        <NavLink to="/learn" className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
+        <NavLink to="/learn" onClick={() => setShowMobileNav(false)} className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}>
           Learn
         </NavLink>
       </nav>
@@ -110,9 +124,11 @@ export default function Navbar() {
             type="button"
             className={styles.keyButton}
             onClick={() => {
+              setShowMobileNav(false);
               setTempKey(selectedProvider === 'gemini' ? (geminiKey || '') : (groqKey || ''));
               setShowKeyDropdown(!showKeyDropdown);
             }}
+            aria-label="AI provider and API key settings"
             title="AI Model & API Key Settings"
           >
             <span

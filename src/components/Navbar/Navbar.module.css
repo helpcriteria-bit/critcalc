@@ -40,6 +40,28 @@
   height: 100%;
 }
 
+.menuButton {
+  display: none;
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg3);
+  cursor: pointer;
+}
+
+.menuButton span {
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--text);
+}
+
 .link, .activeLink {
   text-decoration: none;
   font-size: 13px;
@@ -386,3 +408,102 @@
   font-weight: 600;
 }
 
+.menuButton:focus-visible,
+.link:focus-visible,
+.activeLink:focus-visible,
+.keyButton:focus-visible,
+.signInBtn:focus-visible,
+.userChip:focus-visible {
+  outline: 2px solid var(--theme);
+  outline-offset: 2px;
+}
+
+@media (max-width: 880px) {
+  .navbar {
+    min-height: 56px;
+    height: auto;
+    flex-wrap: wrap;
+    padding: 6px 16px;
+  }
+
+  .left {
+    order: 1;
+  }
+
+  .right {
+    order: 2;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .menuButton {
+    display: flex;
+    order: 3;
+    margin-left: 8px;
+  }
+
+  .center {
+    display: none;
+    order: 4;
+    width: 100%;
+    height: auto;
+    margin-top: 8px;
+    padding-top: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    border-top: 1px solid var(--border);
+  }
+
+  .center.mobileOpen {
+    display: flex;
+  }
+
+  .link,
+  .activeLink {
+    height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 7px;
+  }
+
+  .activeLink {
+    background: var(--theme-alpha);
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding: 6px 12px;
+  }
+
+  .keyButton {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .keyText {
+    display: none;
+  }
+
+  .dropdown {
+    right: -52px;
+    width: min(260px, calc(100vw - 24px));
+  }
+
+  .userName {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link,
+  .activeLink,
+  .signInBtn,
+  .userChip,
+  .keyButton {
+    transition: none;
+  }
+}
